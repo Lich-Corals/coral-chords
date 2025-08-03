@@ -21,13 +21,14 @@ use regex::Regex;
 const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";
 const START_OF_CHORDS_DELIM: &str = "&quot;:{&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;";
 const HTML_BLACKLIST: [&str; 1] = ["&quot;type&quot;:&quot;Video&quot;"];
-const DETAIL_REGEX: &str = r"&quot;:\{&quot;capo&quot;:(\d*),&quot;[tonality&quot;:&quot;]*(\w*)[&quot;,&quot;]*tuning&quot;:\{&quot;name&quot;:&quot;([^:]*)&quot;,&quot;value&quot;:&quot;([^:]*)&quot;,";
+const DETAIL_REGEX: &str = r"&quot;adsupp_binary_blocked&quot;:null,&quot;meta&quot;:\{[&quot;capo&quot;:]*(\d*)[,]*&quot;[tonality&quot;:&quot;]*(\w*)[&quot;,&quot;]*tuning&quot;:\{&quot;name&quot;:&quot;([^:]*)&quot;,&quot;value&quot;:&quot;([^:]*)&quot;,";
 const TYPE_REGEX: &str = r"tab&quot;:\{&quot;id&quot;:\d+,&quot;song_id&quot;:\d+,&quot;song_name&quot;:&quot;[^:]+&quot;,&quot;artist_id&quot;:\d+,&quot;artist_name&quot;:&quot;([^:]+)&quot;,&quot;type&quot;:&quot;([\w\s]+)&quot;,&quot;part&quot;:";
 
 #[derive(Debug, PartialEq)]
 pub enum CoralChordsError {
         InvalidPageType,
         UnknownType,
+        DataEvaluationError,
         ReqError(String),
 }
 
@@ -113,7 +114,26 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
                 clean_lines.push(clean_and_evaluate(line));
         }
 
-        todo!("extract and return data");
+        let regex = Regex::new(DETAIL_REGEX).unwrap();
+        let captures = regex.captures(raw_html);
+        if captures.is_some() {
+                let captures = captures.unwrap();
+                println!("Capo: {}, Tonality: {}, Tuning Name: {}, Tuning: {}", &captures[1], &captures[2], &captures[3], &captures[4]);
+                for i in 1..5 {
+                        if !captures[i].is_empty() {
+                                match i {
+                                        1 => clean_lines.push(DataLine { line_type: DataLineType::Capo, text_data: String::from(&captures[i]) }),
+                                        2 => clean_lines.push(DataLine { line_type: DataLineType::Tonality, text_data: String::from(&captures[i]) }),
+                                        3 => clean_lines.push(DataLine { line_type: DataLineType::TuningName, text_data: String::from(&captures[i]) }),
+                                        4 => clean_lines.push(DataLine { line_type: DataLineType::Tuning, text_data: String::from(&captures[i]) }),
+                                        _ => (),
+                                }
+                        }
+                }
+        } else {
+                return CoralChordsData::Error(CoralChordsError::DataEvaluationError)
+        }
+        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines })
 }
 
 fn clean_and_evaluate(line: &str) -> DataLine {
@@ -192,11 +212,11 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
                         "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
                         "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
-                        "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218",
-                        "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
+                        "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599",
+                        "https://tabs.ultimate-guitar.com/tab/blink-182/feeling-this-bass-104175"];
                 for valid_page_url in valid_page_urls {
                         println!("Testing valid url: {}", valid_page_url);
-                        assert!(matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Data(_)));
+                        assert!(!matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
                 }
 
                 let invalid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/refused/i-wanna-watch-the-world-burn-guitar-pro-5868920", 

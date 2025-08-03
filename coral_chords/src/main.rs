@@ -21,7 +21,8 @@ fn handle_coral_error(error: CoralChordsError) {
         match error {
                 CoralChordsError::InvalidPageType => println!("Invalid page type."),
                 CoralChordsError::ReqError(e) => println!("Web request returned error: {}", e),
-                CoralChordsError::UnknownType => println!("Type not found.")
+                CoralChordsError::UnknownType => println!("Type not found."),
+                CoralChordsError::DataEvaluationError => println!("Could not get details to evaluate.")
         }
 }
 
@@ -43,5 +44,5 @@ fn main() {
 
         let downloaded_chords: CoralChordsData = get_chords_thread.join().unwrap();
 
-        handle_download_result(downloaded_chords);
+        //handle_download_result(downloaded_chords);
 }
