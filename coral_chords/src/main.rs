@@ -14,8 +14,23 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use coral_chords_backend::return_already;
+use coral_chords_backend::{get_song_data_from_url, CoralChordsData, CoralError};
+use std::thread;
+
+fn handle_coral_error(error: CoralError) {
+        match error {
+                CoralError::InvalidPageType => println!("Invalid page type."),
+                CoralError::ReqError(e) => println!("Web request returned error: {}", e),
+        }
+}
 
 fn main() {
-    println!("{}", return_already());
+        let url_to_get = "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"; 
+        let get_chords_thread: thread::JoinHandle<CoralChordsData> =  thread::spawn(|| get_song_data_from_url(url_to_get));
+
+        match get_chords_thread.join().unwrap() {
+                CoralChordsData::Chords(d) => println!("Chords: {}", d),
+                CoralChordsData::Tab(d) => println!("Tab: {}", d),
+                CoralChordsData::Error(e) => handle_coral_error(e),
+        }
 }
