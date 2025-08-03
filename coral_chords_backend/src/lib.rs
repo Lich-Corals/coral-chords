@@ -16,21 +16,59 @@
 
 use ureq::{get, Error as ReqError};
 use html_escape::{decode_html_entities};
+use regex::Regex;
 
 const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";
 const START_OF_CHORDS_DELIM: &str = "&quot;:{&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;";
-
 const HTML_BLACKLIST: [&str; 1] = ["&quot;type&quot;:&quot;Video&quot;"];
+const DETAIL_REGEX: &str = r"&quot;:\{&quot;capo&quot;:(\d*),&quot;[tonality&quot;:&quot;]*(\w*)[&quot;,&quot;]*tuning&quot;:\{&quot;name&quot;:&quot;([^:]*)&quot;,&quot;value&quot;:&quot;([^:]*)&quot;,";
+const TYPE_REGEX: &str = r"tab&quot;:\{&quot;id&quot;:\d+,&quot;song_id&quot;:\d+,&quot;song_name&quot;:&quot;[^:]+&quot;,&quot;artist_id&quot;:\d+,&quot;artist_name&quot;:&quot;([^:]+)&quot;,&quot;type&quot;:&quot;([\w\s]+)&quot;,&quot;part&quot;:";
 
-pub enum CoralError {
+#[derive(Debug)]
+pub enum CoralChordsError {
         InvalidPageType,
+        UnknownType,
         ReqError(String),
 }
 
+#[derive(Debug)]
+pub enum CoralChordsDataType {
+        Chords,
+        Tab,
+        Ukulele,
+        Bass,
+        Drums,
+        Error(CoralChordsError),
+}
+
+#[derive(Debug)]
 pub enum CoralChordsData {
-        Chords(String),
-        Tab(String),
-        Error(CoralError),
+        Data(SongData),
+        Error(CoralChordsError),
+}
+
+#[derive(Debug)]
+pub enum DataLineType {
+        Chord,
+        Lyric,
+        Section,
+        Title,
+        Capo,
+        Tuning,
+        TuningName,
+        Tonality,
+}
+
+#[derive(Debug)]
+pub struct DataLine {
+        line_type: DataLineType,
+        text_data: String,
+}
+
+#[derive(Debug)]
+pub struct SongData {
+        data_type: CoralChordsDataType,
+        lines: Vec<DataLine>,
 }
 
 pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
@@ -39,7 +77,7 @@ pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
                 Ok(s) => raw_html = s,
                 Err(e) => match try_to_fix_url(e, url) {
                         Ok(s) => raw_html = s,
-                        Err(e) => return CoralChordsData::Error(CoralError::ReqError(e.to_string())),
+                        Err(e) => return CoralChordsData::Error(CoralChordsError::ReqError(e.to_string())),
                 },
         }
         match get_type(&raw_html) {
@@ -50,6 +88,10 @@ pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
         }
 }
 
+pub fn store_song(song_data: SongData) -> Result<bool, CoralChordsError> {
+        todo!("store song")
+}
+
 fn unescape_string(string: &str) -> String{
         decode_html_entities(string).to_string().replace("\\n", "\n")
                 .replace("\\t", "\t")
@@ -57,23 +99,58 @@ fn unescape_string(string: &str) -> String{
                 .replace("\\n", "\n")
 }
 
-fn extratc_data(raw_html: &str, data_type: CoralChordsData) -> CoralChordsData {
+fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsData {
         let string_parts: Vec<&str> = raw_html.split(END_OF_CHORDS_DELIM).collect();
         let raw_data: &str = string_parts[0].split(START_OF_CHORDS_DELIM).collect::<Vec<&str>>()[1];
-        let formatted_string: String = unescape_string(raw_data);
-        CoralChordsData::Chords(formatted_string)
+        let formatted_string_lines = unescape_string(raw_data);
+        match data_type {
+                CoralChordsDataType::Error(e) => return CoralChordsData::Error(e),
+                _ => (),
+        }
+
+        let mut clean_lines: Vec<DataLine> = Vec::new();
+        for line in formatted_string_lines.lines() {
+                clean_lines.push(clean_and_evaluate(line));
+        }
+
+        todo!("extract and return data");
 }
 
-fn get_type(html: &str) -> Result<CoralChordsData, CoralError> {
+fn clean_and_evaluate(line: &str) -> DataLine {
+        let mut line_type: DataLineType = DataLineType::Lyric;
+        if line.contains("[ch]") {
+                line_type = DataLineType::Chord;
+        }
+        let mut clean_line: String = String::from(line);
+        for key in ["[ch]", "[/ch]", "[tab]", "[/tab]"] {
+                clean_line = clean_line.replace(key, "")
+        }
+        if clean_line.contains("[") && clean_line.contains("]") {
+                line_type = DataLineType::Section;
+        }
+        DataLine {line_type: line_type, text_data: clean_line}
+}
+
+fn get_type(html: &str) -> Result<CoralChordsDataType, CoralChordsError> {
         for item in HTML_BLACKLIST {
                 if html.contains(item) {
-                        return Err(CoralError::InvalidPageType)
+                        return Err(CoralChordsError::InvalidPageType)
                 }
         }
         if !html.contains(START_OF_CHORDS_DELIM) || !html.contains(END_OF_CHORDS_DELIM) {
-                return Err(CoralError::InvalidPageType)
+                return Err(CoralChordsError::InvalidPageType)
         }
-        Ok(CoralChordsData::Chords(String::default()))
+        let regex = Regex::new(TYPE_REGEX).unwrap();
+        let captures = regex.captures(html).unwrap();
+        
+        match &captures[2] {
+                "Chords" => Ok(CoralChordsDataType::Chords),
+                "Tabs" => Ok(CoralChordsDataType::Tab),
+                "Bass Tabs" => Ok(CoralChordsDataType::Bass),
+                "Ukulele Chords" => Ok(CoralChordsDataType::Ukulele),
+                "Drum Tabs" => Ok(CoralChordsDataType::Drums),
+                _ => Err(CoralChordsError::UnknownType)
+        }
 }
 
 fn try_to_fix_url(error: ReqError, url: &str) -> Result<String, ReqError> {
@@ -91,7 +168,55 @@ fn get_raw_html(url: &str) -> Result<String, ReqError> {
 
 #[cfg(test)]
 mod tests {
+        use std::fmt::Result;
+
         use super::*;
+
+        #[test]
+        fn detect_chords_data() {
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
+                        "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"];
+                for valid_page_url in valid_page_urls {
+                        println!("Testing url: {}", valid_page_url);
+                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Chords));
+                }
+        }
+
+        #[test]
+        fn detect_bass_data() {
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218"];
+                for valid_page_url in valid_page_urls {
+                        println!("Testing url: {}", valid_page_url);
+                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Bass));
+                }
+        }
+
+        #[test]
+        fn detect_tab_data() {
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488"];
+                for valid_page_url in valid_page_urls {
+                        println!("Testing url: {}", valid_page_url);
+                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Tab));
+                }
+        }
+
+        #[test]
+        fn detect_ukulele_data() {
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967"];
+                for valid_page_url in valid_page_urls {
+                        println!("Testing url: {}", valid_page_url);
+                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Ukulele));
+                }
+        }
+
+        #[test]
+        fn detect_drums_data() {
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
+                for valid_page_url in valid_page_urls {
+                        println!("Testing url: {}", valid_page_url);
+                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Drums));
+                }
+        }
 
         #[test]
         fn get_valid_page_song_data() {
@@ -103,7 +228,7 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
                 for valid_page_url in valid_page_urls {
                         println!("Testing valid url: {}", valid_page_url);
-                        assert!(matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Chords(_)));
+                        assert!(matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Data(_)));
                 }
         }
 
@@ -114,7 +239,7 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-video-781202"];
                 for invalid_page_url in invalid_page_urls {
                         println!("Testing invalid url: {}", invalid_page_url);
-                        assert!(matches!(get_song_data_from_url(invalid_page_url), CoralChordsData::Error(CoralError::InvalidPageType)));
+                        assert!(matches!(get_song_data_from_url(invalid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
                 }
         }
 }

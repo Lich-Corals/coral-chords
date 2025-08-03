@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 html-escape = "0.2.13"
+regex = "1.11.1"
 ureq = "3.0.12"
