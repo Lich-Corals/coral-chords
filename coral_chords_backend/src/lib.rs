@@ -70,6 +70,14 @@ pub struct SongData {
         data_type: CoralChordsDataType,
         lines: Vec<DataLine>,
         metadata: SongMetadata,
+        basic_data: BasicSongData,
+}
+
+#[derive(Debug, PartialEq, std::default::Default)]
+pub struct BasicSongData {
+        title: String,
+        artist: String,
+        song_id: String, 
 }
 
 #[derive(Debug, PartialEq, std::default::Default)]
@@ -118,7 +126,7 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
                         let clean_lines: Vec<DataLine> = clean_and_evaluate(formatted_string_lines.lines());
                         return CoralChordsData::Data(SongData { data_type: data_type, 
                                 lines: clean_lines, 
-                                metadata: SongMetadata::default() })
+                                metadata: SongMetadata::default(), basic_data: BasicSongData::default() })
                 }
                 _ => (),
         }
@@ -131,10 +139,10 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
         if captures.is_some() {
                 let captures = captures.unwrap();
                 println!("Capo: {}, Tonality: {}, Tuning Name: {}, Tuning: {}", &captures[1], &captures[2], &captures[3], &captures[4]);
-                song_metadata = SongMetadata { capo: String::from(&captures[1]), 
-                        tonality: String::from(&captures[2]), 
-                        tuning_name: String::from(&captures[3]), 
-                        tuning: String::from(&captures[4]) };
+                song_metadata = SongMetadata { capo: captures[1].to_string(), 
+                        tonality: captures[2].to_string(), 
+                        tuning_name: captures[3].to_string(), 
+                        tuning: captures[4].to_string() };
                 for i in 1..5 {
                         if !captures[i].is_empty() {
                                 match i {
@@ -149,7 +157,7 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
         } else {
                 song_metadata = SongMetadata::default();
         }
-        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines, metadata: song_metadata})
+        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines, metadata: song_metadata, basic_data: BasicSongData::default()})
 }
 
 fn clean_and_evaluate(lines: std::str::Lines<'_>) -> Vec<DataLine> {
