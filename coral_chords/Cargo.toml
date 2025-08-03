@@ -1,0 +1,7 @@
+[package]
+name = "coral_chords"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+coral_chords_backend = { path = "../coral_chords_backend" }
