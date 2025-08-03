@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ureq::{get, Error as ReqError};
+use html_escape::{decode_html_entities};
 
 const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";
 const START_OF_CHORDS_DELIM: &str = "&quot;:{&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;";
@@ -49,17 +50,18 @@ pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
         }
 }
 
+fn unescape_string(string: &str) -> String{
+        decode_html_entities(string).to_string().replace("\\n", "\n")
+                .replace("\\t", "\t")
+                .replace("\\r", "\r")
+                .replace("\\n", "\n")
+}
+
 fn extratc_data(raw_html: &str, data_type: CoralChordsData) -> CoralChordsData {
         let string_parts: Vec<&str> = raw_html.split(END_OF_CHORDS_DELIM).collect();
         let raw_data: &str = string_parts[0].split(START_OF_CHORDS_DELIM).collect::<Vec<&str>>()[1];
-        CoralChordsData::Chords(String::from(raw_data))
-}
-
-fn try_to_fix_url(error: ReqError, url: &str) -> Result<String, ReqError> {
-        match error {
-                ReqError::BadUri(_e) => return get_raw_html(&("https://".to_owned() + url)),
-                _ => return Err(ReqError::BadUri(String::from(url)))
-        }
+        let formatted_string: String = unescape_string(raw_data);
+        CoralChordsData::Chords(formatted_string)
 }
 
 fn get_type(html: &str) -> Result<CoralChordsData, CoralError> {
@@ -74,6 +76,13 @@ fn get_type(html: &str) -> Result<CoralChordsData, CoralError> {
         Ok(CoralChordsData::Chords(String::default()))
 }
 
+fn try_to_fix_url(error: ReqError, url: &str) -> Result<String, ReqError> {
+        match error {
+                ReqError::BadUri(_e) => return get_raw_html(&("https://".to_owned() + url)),
+                _ => return Err(ReqError::BadUri(String::from(url)))
+        }
+}
+
 fn get_raw_html(url: &str) -> Result<String, ReqError> {
         let mut response =  get(url).call()?;
         let raw_html = response.body_mut().read_to_string()?;
@@ -86,12 +95,12 @@ mod tests {
 
         #[test]
         fn get_valid_page_song_data() {
-                let valid_page_urls = vec![  "https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
-                                                                "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
-                                                                "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
-                                                                "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
-                                                                "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218",
-                                                                "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
+                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
+                        "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
+                        "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
+                        "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
+                        "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218",
+                        "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
                 for valid_page_url in valid_page_urls {
                         println!("Testing valid url: {}", valid_page_url);
                         assert!(matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Chords(_)));
@@ -101,8 +110,8 @@ mod tests {
         #[test]
         fn get_invalid_page_song_data() {
                 let invalid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/refused/i-wanna-watch-the-world-burn-guitar-pro-5868920", 
-                                                                "https://tabs.ultimate-guitar.com/tab/refused/rather-be-dead-power-595658", 
-                                                                "https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-video-781202"];
+                        "https://tabs.ultimate-guitar.com/tab/refused/rather-be-dead-power-595658", 
+                        "https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-video-781202"];
                 for invalid_page_url in invalid_page_urls {
                         println!("Testing invalid url: {}", invalid_page_url);
                         assert!(matches!(get_song_data_from_url(invalid_page_url), CoralChordsData::Error(CoralError::InvalidPageType)));
