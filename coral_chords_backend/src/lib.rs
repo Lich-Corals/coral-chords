@@ -49,10 +49,6 @@ pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
         }
 }
 
-pub fn return_already() -> u16 {
-        return !!!!!!!!!!!!!!1111
-}
-
 fn extratc_data(raw_html: &str, data_type: CoralChordsData) -> CoralChordsData {
         let string_parts: Vec<&str> = raw_html.split(END_OF_CHORDS_DELIM).collect();
         let raw_data: &str = string_parts[0].split(START_OF_CHORDS_DELIM).collect::<Vec<&str>>()[1];
