@@ -24,14 +24,14 @@ const HTML_BLACKLIST: [&str; 1] = ["&quot;type&quot;:&quot;Video&quot;"];
 const DETAIL_REGEX: &str = r"&quot;:\{&quot;capo&quot;:(\d*),&quot;[tonality&quot;:&quot;]*(\w*)[&quot;,&quot;]*tuning&quot;:\{&quot;name&quot;:&quot;([^:]*)&quot;,&quot;value&quot;:&quot;([^:]*)&quot;,";
 const TYPE_REGEX: &str = r"tab&quot;:\{&quot;id&quot;:\d+,&quot;song_id&quot;:\d+,&quot;song_name&quot;:&quot;[^:]+&quot;,&quot;artist_id&quot;:\d+,&quot;artist_name&quot;:&quot;([^:]+)&quot;,&quot;type&quot;:&quot;([\w\s]+)&quot;,&quot;part&quot;:";
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CoralChordsError {
         InvalidPageType,
         UnknownType,
         ReqError(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CoralChordsDataType {
         Chords,
         Tab,
@@ -173,53 +173,21 @@ mod tests {
         use super::*;
 
         #[test]
-        fn detect_chords_data() {
-                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
-                        "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"];
-                for valid_page_url in valid_page_urls {
-                        println!("Testing url: {}", valid_page_url);
-                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Chords));
+        fn type_detection() {
+                let type_detection_checks: Vec<(CoralChordsDataType, &str)> = vec![(CoralChordsDataType::Chords, "https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549"),
+                        (CoralChordsDataType::Chords, "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"),
+                        (CoralChordsDataType::Bass, "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218"),
+                        (CoralChordsDataType::Tab, "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488"),
+                        (CoralChordsDataType::Ukulele, "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967"),
+                        (CoralChordsDataType::Drums, "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599")];
+                for check in type_detection_checks {
+                        println!("Testing url: {}", stringify!(get_type(&get_raw_html(check.1).unwrap()).unwrap()));
+                        assert_eq!(get_type(&get_raw_html(check.1).unwrap()).unwrap(), check.0);
                 }
         }
 
         #[test]
-        fn detect_bass_data() {
-                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218"];
-                for valid_page_url in valid_page_urls {
-                        println!("Testing url: {}", valid_page_url);
-                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Bass));
-                }
-        }
-
-        #[test]
-        fn detect_tab_data() {
-                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488"];
-                for valid_page_url in valid_page_urls {
-                        println!("Testing url: {}", valid_page_url);
-                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Tab));
-                }
-        }
-
-        #[test]
-        fn detect_ukulele_data() {
-                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967"];
-                for valid_page_url in valid_page_urls {
-                        println!("Testing url: {}", valid_page_url);
-                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Ukulele));
-                }
-        }
-
-        #[test]
-        fn detect_drums_data() {
-                let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"];
-                for valid_page_url in valid_page_urls {
-                        println!("Testing url: {}", valid_page_url);
-                        assert!(matches!(get_type(&get_raw_html(valid_page_url).unwrap()).unwrap(), CoralChordsDataType::Drums));
-                }
-        }
-
-        #[test]
-        fn get_valid_page_song_data() {
+        fn validate_page_contents() {
                 let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
                         "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
                         "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
@@ -230,10 +198,7 @@ mod tests {
                         println!("Testing valid url: {}", valid_page_url);
                         assert!(matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Data(_)));
                 }
-        }
 
-        #[test]
-        fn get_invalid_page_song_data() {
                 let invalid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/refused/i-wanna-watch-the-world-burn-guitar-pro-5868920", 
                         "https://tabs.ultimate-guitar.com/tab/refused/rather-be-dead-power-595658", 
                         "https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-video-781202"];
