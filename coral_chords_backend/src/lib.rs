@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use ureq::{get, Error as ReqError};
-use std::{default, matches};
 
 const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";
 const START_OF_CHORDS_DELIM: &str = "&quot;:{&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;";
