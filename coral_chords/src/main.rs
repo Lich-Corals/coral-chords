@@ -22,7 +22,6 @@ fn handle_coral_error(error: CoralChordsError) {
                 CoralChordsError::InvalidPageType => println!("Invalid page type."),
                 CoralChordsError::ReqError(e) => println!("Web request returned error: {}", e),
                 CoralChordsError::UnknownType => println!("Type not found."),
-                CoralChordsError::DataEvaluationError => println!("Could not get details to evaluate.")
         }
 }
 
@@ -45,4 +44,17 @@ fn main() {
         let downloaded_chords: CoralChordsData = get_chords_thread.join().unwrap();
 
         //handle_download_result(downloaded_chords);
+
+        let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
+                        "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
+                        "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
+                        "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
+                        "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218",
+                        "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599",
+                        "https://tabs.ultimate-guitar.com/tab/blink-182/feeling-this-bass-104175",
+                        "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"];
+        for valid_page_url in valid_page_urls {
+                println!("Testing {}", valid_page_url);
+                get_song_data_from_url(valid_page_url);
+        }
 }

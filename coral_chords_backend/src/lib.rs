@@ -28,7 +28,6 @@ const TYPE_REGEX: &str = r"tab&quot;:\{&quot;id&quot;:\d+,&quot;song_id&quot;:\d
 pub enum CoralChordsError {
         InvalidPageType,
         UnknownType,
-        DataEvaluationError,
         ReqError(String),
 }
 
@@ -70,6 +69,15 @@ pub struct DataLine {
 pub struct SongData {
         data_type: CoralChordsDataType,
         lines: Vec<DataLine>,
+        metadata: SongMetadata,
+}
+
+#[derive(Debug, PartialEq, std::default::Default)]
+pub struct SongMetadata {
+        capo: String,
+        tonality: String,
+        tuning_name: String,
+        tuning: String,
 }
 
 pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
@@ -106,19 +114,27 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
         let formatted_string_lines = unescape_string(raw_data);
         match data_type {
                 CoralChordsDataType::Error(e) => return CoralChordsData::Error(e),
+                CoralChordsDataType::Drums => {
+                        let clean_lines: Vec<DataLine> = clean_and_evaluate(formatted_string_lines.lines());
+                        return CoralChordsData::Data(SongData { data_type: data_type, 
+                                lines: clean_lines, 
+                                metadata: SongMetadata::default() })
+                }
                 _ => (),
         }
 
-        let mut clean_lines: Vec<DataLine> = Vec::new();
-        for line in formatted_string_lines.lines() {
-                clean_lines.push(clean_and_evaluate(line));
-        }
+        let mut clean_lines: Vec<DataLine> = clean_and_evaluate(formatted_string_lines.lines());
 
         let regex = Regex::new(DETAIL_REGEX).unwrap();
         let captures = regex.captures(raw_html);
+        let song_metadata: SongMetadata;
         if captures.is_some() {
                 let captures = captures.unwrap();
                 println!("Capo: {}, Tonality: {}, Tuning Name: {}, Tuning: {}", &captures[1], &captures[2], &captures[3], &captures[4]);
+                song_metadata = SongMetadata { capo: String::from(&captures[1]), 
+                        tonality: String::from(&captures[2]), 
+                        tuning_name: String::from(&captures[3]), 
+                        tuning: String::from(&captures[4]) };
                 for i in 1..5 {
                         if !captures[i].is_empty() {
                                 match i {
@@ -131,24 +147,29 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
                         }
                 }
         } else {
-                return CoralChordsData::Error(CoralChordsError::DataEvaluationError)
+                song_metadata = SongMetadata::default();
         }
-        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines })
+        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines, metadata: song_metadata})
 }
 
-fn clean_and_evaluate(line: &str) -> DataLine {
-        let mut line_type: DataLineType = DataLineType::Lyric;
-        if line.contains("[ch]") {
-                line_type = DataLineType::Chord;
+fn clean_and_evaluate(lines: std::str::Lines<'_>) -> Vec<DataLine> {
+        let mut clean_lines: Vec<DataLine> = Vec::new();
+        for line in lines {
+                let mut line_type: DataLineType = DataLineType::Lyric;
+                if line.contains("[ch]") {
+                        line_type = DataLineType::Chord;
+                }
+                let mut clean_line: String = String::from(line);
+                for key in ["[ch]", "[/ch]", "[tab]", "[/tab]"] {
+                        clean_line = clean_line.replace(key, "")
+                }
+                if clean_line.contains("[") && clean_line.contains("]") {
+                        line_type = DataLineType::Section;
+                }
+                clean_lines.push(DataLine {line_type: line_type, text_data: clean_line});
         }
-        let mut clean_line: String = String::from(line);
-        for key in ["[ch]", "[/ch]", "[tab]", "[/tab]"] {
-                clean_line = clean_line.replace(key, "")
-        }
-        if clean_line.contains("[") && clean_line.contains("]") {
-                line_type = DataLineType::Section;
-        }
-        DataLine {line_type: line_type, text_data: clean_line}
+        clean_lines
+        
 }
 
 fn get_type(html: &str) -> Result<CoralChordsDataType, CoralChordsError> {
@@ -189,7 +210,6 @@ fn get_raw_html(url: &str) -> Result<String, ReqError> {
 #[cfg(test)]
 mod tests {
         use std::fmt::Result;
-
         use super::*;
 
         #[test]
@@ -199,7 +219,8 @@ mod tests {
                         (CoralChordsDataType::Bass, "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218"),
                         (CoralChordsDataType::Tab, "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488"),
                         (CoralChordsDataType::Ukulele, "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967"),
-                        (CoralChordsDataType::Drums, "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599")];
+                        (CoralChordsDataType::Drums, "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"),
+                        (CoralChordsDataType::Bass, "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995")];
                 for check in type_detection_checks {
                         println!("Testing url: {}", stringify!(get_type(&get_raw_html(check.1).unwrap()).unwrap()));
                         assert_eq!(get_type(&get_raw_html(check.1).unwrap()).unwrap(), check.0);
@@ -213,7 +234,8 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
                         "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
                         "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599",
-                        "https://tabs.ultimate-guitar.com/tab/blink-182/feeling-this-bass-104175"];
+                        "https://tabs.ultimate-guitar.com/tab/blink-182/feeling-this-bass-104175",
+                        "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"];
                 for valid_page_url in valid_page_urls {
                         println!("Testing valid url: {}", valid_page_url);
                         assert!(!matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
@@ -225,6 +247,31 @@ mod tests {
                 for invalid_page_url in invalid_page_urls {
                         println!("Testing invalid url: {}", invalid_page_url);
                         assert!(matches!(get_song_data_from_url(invalid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
+                }
+        }
+
+        #[test]
+        fn get_meta_data() {
+                let url_meta_data_sets: Vec<(SongMetadata, &str)> = vec![(SongMetadata { capo: String::from("3"), 
+                                tonality: String::from(""), 
+                                tuning_name: String::from("G C E A"), 
+                                tuning: String::from("G C E A") }, "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967"),
+                        (SongMetadata::default(), "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"),
+                        (SongMetadata::default(), "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599"),
+                        (SongMetadata { capo: String::from("1"), 
+                                tonality: String::from(""), 
+                                tuning_name: String::from("Standard"), 
+                                tuning: String::from("E A D G B E") }, "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"),
+                        (SongMetadata { capo: String::from(""), 
+                                tonality: String::from("F"), 
+                                tuning_name: String::from("Standard"), 
+                                tuning: String::from("E A D G B E") }, "https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549"),];
+                for url_meta_data_set in url_meta_data_sets {
+                        println!("Testing url: {}", stringify!(get_type(&get_raw_html(url_meta_data_set.1).unwrap()).unwrap()));
+                        match extratc_data(&get_raw_html(url_meta_data_set.1).unwrap(), CoralChordsDataType::Chords) {
+                                CoralChordsData::Data(d) => assert_eq!(d.metadata, url_meta_data_set.0),
+                                CoralChordsData::Error(e) => panic!("Something went wrong!... [insert useful error message here]"),
+                        }
                 }
         }
 }
