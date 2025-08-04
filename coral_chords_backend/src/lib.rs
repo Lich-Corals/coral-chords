@@ -72,6 +72,7 @@ pub mod types_and_constants {
                 pub title: String,
                 pub artist: String,
                 pub song_id: String, 
+                pub tab_link: String,
         }
 
         #[derive(Debug, PartialEq, std::default::Default)]

@@ -36,11 +36,33 @@ pub fn get_song_data_from_url(url: &str) -> Result<SongData, CoralChordsError> {
         }
 }
 
-fn unescape_string(string: &str) -> String{
+pub fn unescape_string(string: &str) -> String{
         decode_html_entities(string).to_string().replace("\\n", "\n")
                 .replace("\\t", "\t")
                 .replace("\\r", "\r")
                 .replace("\\n", "\n")
+}
+
+pub fn get_type(html: &str) -> Result<CoralChordsDataType, CoralChordsError> {
+        for item in HTML_BLACKLIST {
+                if html.contains(item) {
+                        return Err(CoralChordsError::InvalidPageType)
+                }
+        }
+        if !html.contains(START_OF_CHORDS_DELIM) || !html.contains(END_OF_CHORDS_DELIM) {
+                return Err(CoralChordsError::InvalidPageType)
+        }
+        let regex = Regex::new(TYPE_REGEX).unwrap();
+        let captures = regex.captures(html).unwrap();
+        
+        match &captures[2] {
+                "Chords" => Ok(CoralChordsDataType::Chords),
+                "Tabs" => Ok(CoralChordsDataType::Tab),
+                "Bass Tabs" => Ok(CoralChordsDataType::Bass),
+                "Ukulele Chords" => Ok(CoralChordsDataType::Ukulele),
+                "Drum Tabs" => Ok(CoralChordsDataType::Drums),
+                _ => Err(CoralChordsError::UnknownType)
+        }
 }
 
 fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> Result<SongData, CoralChordsError> {
@@ -106,28 +128,6 @@ fn clean_and_evaluate(lines: std::str::Lines<'_>) -> Vec<DataLine> {
         }
         clean_lines
         
-}
-
-fn get_type(html: &str) -> Result<CoralChordsDataType, CoralChordsError> {
-        for item in HTML_BLACKLIST {
-                if html.contains(item) {
-                        return Err(CoralChordsError::InvalidPageType)
-                }
-        }
-        if !html.contains(START_OF_CHORDS_DELIM) || !html.contains(END_OF_CHORDS_DELIM) {
-                return Err(CoralChordsError::InvalidPageType)
-        }
-        let regex = Regex::new(TYPE_REGEX).unwrap();
-        let captures = regex.captures(html).unwrap();
-        
-        match &captures[2] {
-                "Chords" => Ok(CoralChordsDataType::Chords),
-                "Tabs" => Ok(CoralChordsDataType::Tab),
-                "Bass Tabs" => Ok(CoralChordsDataType::Bass),
-                "Ukulele Chords" => Ok(CoralChordsDataType::Ukulele),
-                "Drum Tabs" => Ok(CoralChordsDataType::Drums),
-                _ => Err(CoralChordsError::UnknownType)
-        }
 }
 
 fn try_to_fix_url(error: ReqError, url: &str) -> Result<String, ReqError> {
