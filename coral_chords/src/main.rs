@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use coral_chords_backend::{get_song_data_from_url, store_song, CoralChordsError};
+use coral_chords_backend::data_preparation::{get_song_data_from_url};
+use coral_chords_backend::types_and_constants::{CoralChordsError, SongData};
+use coral_chords_backend::system_access::{store_song};
 use std::{thread};
 
 fn handle_coral_error(error: CoralChordsError) {
@@ -25,7 +27,7 @@ fn handle_coral_error(error: CoralChordsError) {
         }
 }
 
-fn handle_download_result(result: Result<coral_chords_backend::SongData, CoralChordsError>) {
+fn handle_download_result(result: Result<SongData, CoralChordsError>) {
         match result {
                 Err(e) => handle_coral_error(e),
                 Ok(d) => {
@@ -39,7 +41,7 @@ fn handle_download_result(result: Result<coral_chords_backend::SongData, CoralCh
 
 fn main() {
         let url_to_get = "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"; 
-        let get_chords_thread: thread::JoinHandle<Result<coral_chords_backend::SongData, CoralChordsError>> =  thread::spawn(|| get_song_data_from_url(url_to_get));
+        let get_chords_thread: thread::JoinHandle<Result<SongData, CoralChordsError>> =  thread::spawn(|| get_song_data_from_url(url_to_get));
 
         let downloaded_chords  = get_chords_thread.join().unwrap();
 
