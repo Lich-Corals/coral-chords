@@ -42,12 +42,6 @@ pub enum CoralChordsDataType {
 }
 
 #[derive(Debug)]
-pub enum CoralChordsData {
-        Data(SongData),
-        Error(CoralChordsError),
-}
-
-#[derive(Debug)]
 pub enum DataLineType {
         Chord,
         Lyric,
@@ -88,25 +82,33 @@ pub struct SongMetadata {
         tuning: String,
 }
 
-pub fn get_song_data_from_url(url: &str) -> CoralChordsData {
+pub fn get_song_data_from_url(url: &str) -> Result<SongData, CoralChordsError> {
         let raw_html: String;
         match get_raw_html(url) {
                 Ok(s) => raw_html = s,
                 Err(e) => match try_to_fix_url(e, url) {
                         Ok(s) => raw_html = s,
-                        Err(e) => return CoralChordsData::Error(CoralChordsError::ReqError(e.to_string())),
+                        Err(e) => return Err(CoralChordsError::ReqError(e.to_string())),
                 },
         }
         match get_type(&raw_html) {
                 Ok(d) => {
                         extratc_data(&raw_html, d)
                 },
-                Err(e) => CoralChordsData::Error(e)
+                Err(e) => Err(e)
         }
 }
 
 pub fn store_song(song_data: SongData) -> Result<bool, CoralChordsError> {
         todo!("store song")
+}
+
+pub fn read_file(path: String) -> Result<SongData, CoralChordsError> {
+        todo!("Read files")
+}
+
+pub fn decode_file(raw_data: String) -> Result<SongData, CoralChordsError> {
+        todo!("Decode raw data")
 }
 
 fn unescape_string(string: &str) -> String{
@@ -116,17 +118,18 @@ fn unescape_string(string: &str) -> String{
                 .replace("\\n", "\n")
 }
 
-fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsData {
+fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> Result<SongData, CoralChordsError> {
         let string_parts: Vec<&str> = raw_html.split(END_OF_CHORDS_DELIM).collect();
         let raw_data: &str = string_parts[0].split(START_OF_CHORDS_DELIM).collect::<Vec<&str>>()[1];
         let formatted_string_lines = unescape_string(raw_data);
         match data_type {
-                CoralChordsDataType::Error(e) => return CoralChordsData::Error(e),
+                CoralChordsDataType::Error(e) => return Err(e),
                 CoralChordsDataType::Drums => {
                         let clean_lines: Vec<DataLine> = clean_and_evaluate(formatted_string_lines.lines());
-                        return CoralChordsData::Data(SongData { data_type: data_type, 
+                        return Ok(SongData { data_type: data_type, 
                                 lines: clean_lines, 
-                                metadata: SongMetadata::default(), basic_data: BasicSongData::default() })
+                                metadata: SongMetadata::default(), 
+                                basic_data: BasicSongData::default() });
                 }
                 _ => (),
         }
@@ -157,7 +160,7 @@ fn extratc_data(raw_html: &str, data_type: CoralChordsDataType) -> CoralChordsDa
         } else {
                 song_metadata = SongMetadata::default();
         }
-        CoralChordsData::Data(SongData { data_type: data_type, lines: clean_lines, metadata: song_metadata, basic_data: BasicSongData::default()})
+        return Ok(SongData { data_type: data_type, lines: clean_lines, metadata: song_metadata, basic_data: BasicSongData::default()})
 }
 
 fn clean_and_evaluate(lines: std::str::Lines<'_>) -> Vec<DataLine> {
@@ -246,7 +249,7 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"];
                 for valid_page_url in valid_page_urls {
                         println!("Testing valid url: {}", valid_page_url);
-                        assert!(!matches!(get_song_data_from_url(valid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
+                        assert!(!matches!(get_song_data_from_url(valid_page_url), Err(CoralChordsError::InvalidPageType)));
                 }
 
                 let invalid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/refused/i-wanna-watch-the-world-burn-guitar-pro-5868920", 
@@ -254,7 +257,7 @@ mod tests {
                         "https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-video-781202"];
                 for invalid_page_url in invalid_page_urls {
                         println!("Testing invalid url: {}", invalid_page_url);
-                        assert!(matches!(get_song_data_from_url(invalid_page_url), CoralChordsData::Error(CoralChordsError::InvalidPageType)));
+                        assert!(matches!(get_song_data_from_url(invalid_page_url), Err(CoralChordsError::InvalidPageType)));
                 }
         }
 
@@ -277,8 +280,8 @@ mod tests {
                 for url_meta_data_set in url_meta_data_sets {
                         println!("Testing url: {}", stringify!(get_type(&get_raw_html(url_meta_data_set.1).unwrap()).unwrap()));
                         match extratc_data(&get_raw_html(url_meta_data_set.1).unwrap(), CoralChordsDataType::Chords) {
-                                CoralChordsData::Data(d) => assert_eq!(d.metadata, url_meta_data_set.0),
-                                CoralChordsData::Error(e) => panic!("Something went wrong!... [insert useful error message here]"),
+                                Ok(d) => assert_eq!(d.metadata, url_meta_data_set.0),
+                                Err(e) => panic!("Something went wrong!... [insert useful error message here]"),
                         }
                 }
         }
