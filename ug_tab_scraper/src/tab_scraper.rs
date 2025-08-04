@@ -1,4 +1,4 @@
-// Coral-Chords - Automatic chords for spotify
+// UG-Tab-Scraper - A rust api for downloading UG tabs
 // Copyright (C) 2025  Linus Tibert
 //
 // This program is free software: you can redistribute it and/or modify
@@ -61,7 +61,7 @@ pub fn get_type(html: &str) -> Result<CoralChordsDataType, CoralChordsError> {
                 "Bass Tabs" => Ok(CoralChordsDataType::Bass),
                 "Ukulele Chords" => Ok(CoralChordsDataType::Ukulele),
                 "Drum Tabs" => Ok(CoralChordsDataType::Drums),
-                _ => Err(CoralChordsError::UnknownType)
+                _ => Err(CoralChordsError::UnknownType),
         }
 }
 

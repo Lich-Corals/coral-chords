@@ -1,4 +1,4 @@
-// Coral-Chords - Automatic chords for spotify
+// UG-Tab-Scraper - A rust api for downloading UG tabs
 // Copyright (C) 2025  Linus Tibert
 //
 // This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data_preparation;
-pub mod system_access;
+pub mod tab_scraper;
 
 pub mod types_and_constants {
         pub const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";

@@ -1,5 +1,5 @@
 [package]
-name = "coral_chords_backend"
+name = "ug_tab_scraper"
 version = "0.1.0"
 edition = "2021"
 
