@@ -1,0 +1,73 @@
+% Coral-Chords - Automatic chords for spotify
+% Copyright (C) 2025  Linus Tibert
+%
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU Affero General Public Licence as published
+% by the Free Software Foundation, either version 3 of the Licence, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU Affero General Public Licence for more details.
+%
+% You should have received a copy of the GNU Affero General Public Licence
+% along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+\documentclass[12pt, a4paper]{article}
+\usepackage[left=2cm, right=4cm, top=2cm, bottom=3cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage[htt]{hyphenat}
+\usepackage{tikz, circuitikz}
+\usepackage{fancyhdr}
+\usepackage{wrapfig}
+\usepackage{float}
+
+\title{Coral-Chords documentation}
+\author{Linus Tibert}
+\date{\today}
+
+\pagestyle{fancy}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\thepage}
+\fancyfoot[L]{\tiny\copyright\ 2025 Linus Tibert - AGPLv3 Licence}
+\fancyfoot[R]{\tiny Last update: \today}
+\fancyhead{}
+
+\begin{document}
+        \maketitle
+        \pagebreak
+        \tableofcontents
+        \pagebreak
+
+        \section{Introduction}
+        \section{Project structure}
+                \subsection{Coral-Chords-Backend}
+                \subsection{Coral-Chords}
+        \section{Getting the data}
+        \section{Storing the data}
+        \section{UI stuff}
+        \section{Code components}
+                \subsection{Coral-Chords-Backend}
+                        {
+                                \raggedright
+                                \subsubsection{Constants}
+                                        \texttt{END\_OF\_CHORDS\_DELIM} is a short but unique piece of code from the UG source HTML, which is used to mark the end of the section containing the chords and lyrics.\break
+
+                                        \texttt{START\_OF\_CHORDS\_DELIM} the same as \texttt{END\_OF\_CHORDS\_DELIM}, but used to mark the beginning of useable data. Note that the metadata is not included between the delimiters; it is above the start delimiter.\break
+
+                                        \texttt{HTML\_BLACKLIST} is an array of strings which identify certain types of UG pages which are not downloadable; video pages for example.\break
+
+                                        \texttt{DETAIL\_REGEX} is the Regex expression used to get detailed metadata from the raw HTML of a supported UG page. Each capturing group holds one property.\break
+
+                                        \texttt{TYPE\_REGEX} is used to extract the type of supported page. (I.e. guitar chords, tabs, ukulele chords, bass tabs or drum tabs)
+                                        This data is in the second capturing group. The first group extracts the artist's name, which is not used in the code yet.
+
+                                \subsubsection{Structs}
+                                        \texttt{SongMetadata} is used to store optional metadata about a song. It is able to hold the capo position, tonality, tuning name and tuning details. Some of this data is not available on every supported page; in such cases, the unavailable data will an empty string. If no metadata is available at all, \texttt{SongMetadata::default()} will be used as a metadata struct.
+
+                                \subsubsection{Functions}
+                        }
+                        \subsubsection{Tests}
+                \subsection{Coral-Chords}
+\end{document}
