@@ -34,14 +34,40 @@
 \fancyfoot[R]{\tiny Last update: \today}
 \fancyhead{}
 
+\newcommand{\fref}[1]{\textit{\ref{#1} \nameref{#1}}}
+
 \begin{document}
         \maketitle
         \pagebreak
         \tableofcontents
         \pagebreak
 
+        \section{Used abbreviations}
+                Although some of those might seem obvious, I'll give a complete overview of special abbreviations used in the document for those who are not familiar with any of them.
+                \begin{figure}[H]
+                        \begin{tabular}{l l}
+                                CCh & Coral-Chords\\
+                                UG & Ultimate Guitar\\
+                                BE & Backend (coral-chords-backend library)\\
+                                FE & Frontend (coral-chords binary application)\\
+                                UI & User-interface\\
+                                ID/UID & (unique) identifier
+                        \end{tabular}
+                \end{figure}
+                \pagebreak
+
         \section{Introduction}
+                This document is supposed to be a useful guide for those who want to understand how the code of CCh works. It is especially designed to be an explanation of how each component of the program is working, however, some detailed parts (such as specific functions()) are not mentioned here, because they are easier to understand (if you know what the whole section of the code is for), when looking at the actual code.
+
+                To make this document more accessible for everyone, it is divided into many small sections, each with a clear subject. The 
         \section{Project structure}
+                The project is divided into two major parts: the BA (coral-chords-backend library), and the main program (coral-chords binary; the FE).
+
+                The FE is the part of the program which interacts directly with the user and which is also creating the UI.
+
+                The BA is where the magic happens. Its purpose is to do anything not directly involving the user. Thus, it fulfils tasks involving networking, data extraction or direct interaction with the (file) system.
+
+                Dividing CCh this way makes it easier to focus on a specific task when extending the code. This way, a specific function in the BA can be heavily modified without affecting the UI. Another important aspect of this structure is the length of each part being dramatically reduced, helping to understand specific parts of code without having too much other stuff in the way.
                 \subsection{Coral-Chords-Backend}
                 \subsection{Coral-Chords}
         \section{Getting the data}
@@ -64,10 +90,24 @@
                                         This data is in the second capturing group. The first group extracts the artist's name, which is not used in the code yet.
 
                                 \subsubsection{Structs}
-                                        \texttt{SongMetadata} is used to store optional metadata about a song. It is able to hold the capo position, tonality, tuning name and tuning details. Some of this data is not available on every supported page; in such cases, the unavailable data will an empty string. If no metadata is available at all, \texttt{SongMetadata::default()} will be used as a metadata struct.
+                                        \label{sec:ba-structs}
+                                        \texttt{DataLine} is used to store a single line of extracted data together with the type of data stored on the line. Those lines are used in the \texttt{SongData} struct.\break
 
-                                \subsubsection{Functions}
+                                        \texttt{SongData} is used to store a single song with all its collected data. The \texttt{lines} are the same lines which are written and loaded in local files.\break
+
+                                        \texttt{BasicSongData} holds the basic metadata every song has. It consists of the song title, artist, and the Spotify song UID.\break
+
+                                        \texttt{SongMetadata} is used to store optional metadata about a song. It is able to hold the capo position, tonality, tuning name and tuning details. Some of this data is not available on every supported page; in such cases, the unavailable data will an empty string. If no metadata is available at all, \texttt{SongMetadata::default()} will be used as a metadata struct.
                         }
                         \subsubsection{Tests}
+                                The library contains a bunch of tests to verify the code is still compatible with the currently available chords on UG.
+
+                                The tests are named with what they are testing for. For example, the \texttt{type\_detection()} test compares the results of detecting the types of a bunch of URLs using \texttt{get\_type()} with a pre-defined type.
+
+                                All tests are designed to work with as many types of pages as possible. This doesn't only include types like "Bass", "Guitar", etc., but also special pages of the same type (e.g., pages with more or less metadata than others).
+
+                                If you extend the code in any way, make sure, all tests are passing before you submit a pull request. If you add support for any other type of page than currently supported, make sure to extend all tests appropriately.
                 \subsection{Coral-Chords}
+                        \subsubsection{Structs}
+                                N.b. this part of code uses many of the structs defined in the BE-part of the code. View section \fref{sec:ba-structs} for information about the structs defined there.
 \end{document}
