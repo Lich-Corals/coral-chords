@@ -14,24 +14,23 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use coral_chords_backend::data_preparation::{get_song_data_from_url};
-use coral_chords_backend::types_and_constants::{CoralChordsError, SongData};
-use coral_chords_backend::system_access::{store_song};
-use std::{thread};
+use coral_chords_backend::network::*;
+use coral_chords_backend::file_system::*;
+use coral_chords_backend::formats::*;
+use ug_scraper::types::{Song};
+use std::{error::Error, thread};
 
-fn handle_coral_error(error: CoralChordsError) {
+fn handle_coral_error(error: Box<dyn Error>) {
         match error {
-                CoralChordsError::InvalidPageType => println!("Invalid page type."),
-                CoralChordsError::ReqError(e) => println!("Web request returned error: {}", e),
-                CoralChordsError::UnknownType => println!("Type not found."),
+                _ => (),
         }
 }
 
-fn handle_download_result(result: Result<SongData, CoralChordsError>) {
+fn handle_download_result(result: Result<Song, Box<dyn Error>>) {
         match result {
                 Err(e) => handle_coral_error(e),
                 Ok(d) => {
-                        match store_song(d) {
+                        match store_file(d) {
                                 Err(e) => handle_coral_error(e),
                                 _ => (),
                         }
@@ -41,7 +40,7 @@ fn handle_download_result(result: Result<SongData, CoralChordsError>) {
 
 fn main() {
         let url_to_get = "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"; 
-        let get_chords_thread: thread::JoinHandle<Result<SongData, CoralChordsError>> =  thread::spawn(|| get_song_data_from_url(url_to_get));
+        let get_chords_thread: thread::JoinHandle<()> =  thread::spawn(|| println!("E"));
 
         let downloaded_chords  = get_chords_thread.join().unwrap();
 
@@ -57,6 +56,6 @@ fn main() {
                         "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"];
         for valid_page_url in valid_page_urls {
                 println!("Testing {}", valid_page_url);
-                get_song_data_from_url(valid_page_url);
+                get_tab(valid_page_url);
         }
 }

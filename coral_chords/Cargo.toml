@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 coral_chords_backend = { path = "../coral_chords_backend" }
+ug-scraper = "0.1.1"

@@ -45,15 +45,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9555578bc9e57714c812a1f84e4fc5b4d21fcb063490c624de019f7464c91268"
 
 [[package]]
-name = "coral_chords"
-version = "0.1.0"
-dependencies = [
- "coral_chords_backend",
- "ug-scraper",
-]
-
-[[package]]
-name = "coral_chords_backend"
+name = "coral_chords_system_backend"
 version = "0.1.0"
 dependencies = [
  "ug-scraper",

@@ -14,72 +14,41 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data_preparation;
-pub mod system_access;
+/// Access the local file system
+pub mod file_system {
+        use std::error::Error;
+        use ug_scraper::types::*;
 
-pub mod types_and_constants {
-        pub const END_OF_CHORDS_DELIM: &str = "&quot;,&quot;revision_id&quot;:";
-        pub const START_OF_CHORDS_DELIM: &str = "&quot;:{&quot;wiki_tab&quot;:{&quot;content&quot;:&quot;";
-        pub const HTML_BLACKLIST: [&str; 1] = ["&quot;type&quot;:&quot;Video&quot;"];
-        pub const DETAIL_REGEX: &str = r"&quot;adsupp_binary_blocked&quot;:null,&quot;meta&quot;:\{[&quot;capo&quot;:]*(\d*)[,]*&quot;[tonality&quot;:&quot;]*(\w*)[&quot;,&quot;]*tuning&quot;:\{&quot;name&quot;:&quot;([^:]*)&quot;,&quot;value&quot;:&quot;([^:]*)&quot;,";
-        pub const TYPE_REGEX: &str = r"tab&quot;:\{&quot;id&quot;:\d+,&quot;song_id&quot;:\d+,&quot;song_name&quot;:&quot;[^:]+&quot;,&quot;artist_id&quot;:\d+,&quot;artist_name&quot;:&quot;([^:]+)&quot;,&quot;type&quot;:&quot;([\w\s]+)&quot;,&quot;part&quot;:";
-
-        #[derive(Debug, PartialEq)]
-        pub enum CoralChordsError {
-                InvalidPageType,
-                UnknownType,
-                ReqError(String),
+        /// Save a given song as a local file
+        pub fn store_file(song: Song) -> Result<(), Box<dyn Error>> {
+        todo!("store song")
+}
+        /// Read a requested song file
+        pub fn read_file(path: String) -> Result<Song, Box<dyn Error>> {
+                todo!("Read files")
         }
+}
 
-        #[derive(Debug, PartialEq)]
-        pub enum CoralChordsDataType {
-                Chords,
-                Tab,
-                Ukulele,
-                Bass,
-                Drums,
-                Error(CoralChordsError),
+/// Formats used by Coral-Chords
+pub mod formats {
+        use std::error::Error;
+        use ug_scraper::types::*;
+
+        /// 
+        pub fn decode_file(raw_data: String) -> Result<Song, Box<dyn Error>> {
+                todo!("Decode raw data")
         }
+}
 
-        #[derive(Debug)]
-        pub enum DataLineType {
-                Chord,
-                Lyric,
-                Section,
-                Title,
-                Capo,
-                Tuning,
-                TuningName,
-                Tonality,
-        }
+/// Accessing UG
+pub mod network {
+        use ug_scraper::types::{Song};
+        use std::error::Error;
 
-        #[derive(Debug)]
-        pub struct DataLine {
-                pub line_type: DataLineType,
-                pub text_data: String,
-        }
-
-        #[derive(Debug)]
-        pub struct SongData {
-                pub data_type: CoralChordsDataType,
-                pub lines: Vec<DataLine>,
-                pub metadata: SongMetadata,
-                pub basic_data: BasicSongData,
-        }
-
-        #[derive(Debug, PartialEq, std::default::Default)]
-        pub struct BasicSongData {
-                pub title: String,
-                pub artist: String,
-                pub song_id: String, 
-                pub tab_link: String,
-        }
-
-        #[derive(Debug, PartialEq, std::default::Default)]
-        pub struct SongMetadata {
-                pub capo: String,
-                pub tonality: String,
-                pub tuning_name: String,
-                pub tuning: String,
+        /// Get a tab
+        /// 
+        /// Designed to be used from a thread
+        pub fn get_tab(url: &str) -> Result<Song, Box<dyn Error>> {
+                todo!("download tabs wrapper")
         }
 }
