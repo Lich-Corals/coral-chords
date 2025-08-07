@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /// Access the local file system
-pub mod file_system {
+pub mod system {
         use std::error::Error;
         use ug_scraper::types::*;
 
@@ -34,7 +34,7 @@ pub mod formats {
         use std::error::Error;
         use ug_scraper::types::*;
 
-        /// 
+        /// Decode loaded CCh files
         pub fn decode_file(raw_data: String) -> Result<Song, Box<dyn Error>> {
                 todo!("Decode raw data")
         }
