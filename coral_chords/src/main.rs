@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use coral_chords_backend::network::*;
-use coral_chords_backend::file_system::*;
-use coral_chords_backend::formats::*;
+mod backend;
+use backend::file_system::{store_file};
+use backend::network::{get_tab};
 use ug_scraper::types::{Song};
 use std::{error::Error, thread};
 

@@ -1,7 +1,0 @@
-[package]
-name = "coral_chords_backend"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-ug-scraper = "0.1.1"
