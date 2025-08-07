@@ -32,7 +32,7 @@ pub mod system {
 
         /// Read the config file or return default
         pub fn get_config() -> (CoralConfig, Option<ConfyError>) {
-                let result = confy::load::<CoralConfig>("Coral-Chords", None);
+                let result = confy::load::<CoralConfig>("Coral-Chords", Some("config"));
                 match result {
                         Ok(c) => (c, None),
                         Err(e) => (CoralConfig::default(), Some(e)),
@@ -41,24 +41,36 @@ pub mod system {
 
         /// Write the config file
         pub fn set_config(config: CoralConfig) -> Result<(), Box<dyn Error>> {
-                confy::store("Coral-Chords", None, config)?;
-                println!("{:?}", confy::get_configuration_file_path("Coral-Chords", None).unwrap());
+                confy::store("Coral-Chords", Some("config"), config)?;
+                println!("{:?}", confy::get_configuration_file_path("Coral-Chords", Some("config")).unwrap());
                 Ok(())
         }
 
-        pub fn get_chords_path() -> PathBuf {
+        pub fn set_config_property<T>(name: &str, value: T) {
+
+        }
+
+        /// Get the path to the locally stored tabs
+        /// 
+        /// Should use confy's config path + "/tabs" or something similar.
+        pub fn get_tabs_path() -> PathBuf {
                 todo!("get chord path")
         }
 }
 
 /// Formats used by Coral-Chords
 pub mod formats {
+        use std::hash::Hash;
         use std::{default, error::Error};
         use std::fmt;
         use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
+        use std::collections::HashMap;
 
         /// Decode loaded CCh files
+        /// 
+        /// Might not be needed if using a new struct and confy for storing and loading tabs
+        /// Otherwise, it should be a good idea to load and save using serde and serialization, rendering this function useless too.
         pub fn decode_file(raw_data: String) -> Result<Song, Box<dyn Error>> {
                 todo!("Decode raw data")
         }
@@ -84,14 +96,36 @@ pub mod formats {
         }
 
         /// The configuration used by CCh
+        /// 
+        /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct CoralConfig {
-                foo: bool,
+                str: HashMap<String, String>,
+                bool: HashMap<String, bool>,
+                int: HashMap<String, i64>,
+                float: HashMap<String, f64>,
         }
 
         impl Default for CoralConfig {
                 fn default() -> CoralConfig {
-                        CoralConfig { foo: true }
+                        CoralConfig {
+                                str: HashMap::from([
+                                        ("foo".to_string(), "bar".to_string()),
+                                        ("bar".to_string(), "foo".to_string()),
+                                ]),
+                                bool: HashMap::from([
+                                        ("foo".to_string(), true),
+                                        ("bar".to_string(), false),
+                                ]),
+                                int: HashMap::from([
+                                        ("foo".to_string(), 64),
+                                        ("bar".to_string(), i64::MAX),
+                                ]),
+                                float: HashMap::from([
+                                        ("foo".to_string(), 0.0),
+                                        ("bar".to_string(), f64::MAX),
+                                ])
+                        }
                 }
         }
 

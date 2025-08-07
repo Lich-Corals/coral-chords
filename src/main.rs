@@ -18,6 +18,7 @@ mod backend;
 use backend::system::{set_config, get_config, set_file};
 use backend::network::{};
 use backend::formats::CoralConfig;
+use confy::ConfyError;
 use ug_scraper::types::{Song};
 use std::thread::sleep;
 use std::time::Duration;
@@ -51,18 +52,20 @@ fn handle_download_result(result: Result<Song, Box<dyn Error>>) {
 /// Show info to the user
 /// 
 /// This is most likely not final.
-fn show_info(content: NotificationType) {
+/// ...Those will show popups or similar using GUI instead of println!()
+pub fn show_info(content: NotificationType) {
         let message: String = match content {
                 NotificationType::Info(c) => "Info: ".to_string() + &c,
                 NotificationType::Warning(c) => "WARNING: ".to_string() + &c,
                 NotificationType::Error(c) => "ERROR: ".to_string() + &c,
                 NotificationType::Default => return,
         };
-        println!("{message:?}")
+        println!("{message:?}");
 }
 
 fn main() {
         if let Some(e) = get_config().1 {
-                show_info(NotificationType::Warning("Could not read config file; using defaults.\nMore info: ".to_string() + &e.to_string()));
+                show_info(NotificationType::Warning(
+                        "Could not read config file; using defaults. Help: Restarting may solve the issue.".to_string()));
         }
 }
