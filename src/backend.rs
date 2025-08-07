@@ -16,18 +16,20 @@
 
 /// Access the local file system
 pub mod system {
-        use std::{error::Error, path::PathBuf};
+        use std::{path::PathBuf};
         use ug_scraper::types::*;
         use confy::{self, ConfyError};
-        use crate::backend::formats::{CoralConfig, Value};
+        use crate::backend::formats::{CoralConfig};
 
         /// Save a given song as a local file
-        pub fn set_file(song: Song) -> Result<(), Box<dyn Error>> {
-                todo!("store song")
+        pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
+                confy::store("Coral-Chords", Some(("tabs/".to_string() + song_uid).as_str()), song)?;
+                Ok(())
         }
+
         /// Read a requested song file
-        pub fn get_file(path: String) -> Result<Song, ConfyError> {
-                todo!("Read files")
+        pub fn load_song(song_uid: &str) -> Result<Song, ConfyError> {
+                confy::load::<Song>("Coral-Chords", Some(("tabs/".to_string() + song_uid).as_str()))          
         }
 
         /// Read the config file or return default
@@ -55,8 +57,7 @@ pub mod system {
 
 /// Formats used by Coral-Chords
 pub mod formats {
-        use std::hash::Hash;
-        use std::{default, error::Error};
+        use std::{error::Error};
         use std::fmt;
         use confy::ConfyError;
         use ug_scraper::types::*;
@@ -92,10 +93,10 @@ pub mod formats {
                 }
         }
 
-        /// A wrapper to store different kinds of data in a singl HashMap
+        /// A wrapper to store different kinds of data in a single HashMap
         /// 
         /// Used to store values in the configuration file
-        #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+        #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
         pub enum Value {
                 #[default]
                 None,
@@ -165,12 +166,15 @@ pub mod formats {
 /// Accessing UG
 pub mod network {
         use ug_scraper::types::{Song};
-        use std::error::Error;
+        use ug_scraper::tab_scraper::get_song_data;
 
         /// Get a tab
         /// 
         /// Designed to be used in parallel with the main process.
-        pub fn get_tab(url: &str) -> Result<Song, Box<dyn Error>> {
-                todo!("download tabs wrapper")
+        pub fn get_tab(url: &str) -> Result<Song, String> {
+                match get_song_data(url, true) {
+                        Ok(s) => Ok(s),
+                        Err(e) => Err(e.to_string()),
+                }
         }
 }

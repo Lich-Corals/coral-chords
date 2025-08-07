@@ -15,39 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod backend;
-use backend::system::{set_config, get_config, set_file};
-use backend::network::{};
-use backend::formats::CoralConfig;
 use confy::ConfyError;
 use ug_scraper::types::{Song};
-use std::thread::sleep;
-use std::time::Duration;
-use std::{error::Error, thread};
 
-use crate::backend::formats::{NotificationType, Value};
-
-/// Handle errors
-/// 
-/// Notify the user or do stuff to solve the problem
-fn handle_error(error: Box<dyn Error>) {
-        match error {
-                _ => (),
-        }
-}
-
-/// Handle download result.
-/// 
-/// Store if successfull, else notify user
-fn handle_download_result(result: Result<Song, Box<dyn Error>>) {
-        match result {
-                Err(e) => handle_error(e),
-                Ok(d) => {
-                        if let Err(e) = set_file(d) {
-                                handle_error(e);
-                        }
-                },
-        }
-}
+use crate::backend::formats::{NotificationType, Value, CoralConfig};
+use crate::backend::{network, system};
+use crate::backend::system::{get_config, store_song};
 
 /// Show info to the user
 /// 
@@ -63,9 +36,20 @@ pub fn show_info(content: NotificationType) {
         println!("{message:?}");
 }
 
-fn main() {
-        let global_config = get_config();
-        if let Some(e) = global_config.1 {
+/// Download and store a tab locally
+pub fn get_tab(url: &str) {
+        match network::get_tab(url) {
+                Ok(s) => if let Err(e) = store_song(s, "rickroll") {
+                        show_info(NotificationType::Error("Could not store song to local file: ".to_string() + &e.to_string()));        
+                },
+                Err(e) => show_info(NotificationType::Error("Something went wrong downloading the tab: ".to_string() + &e)),
+        };
+}
+
+/// Wrapper for getting a config object
+fn get_config_object() -> CoralConfig {
+        let config = get_config();
+        if let Some(e) = config.1 {
                 if let ConfyError::BadYamlData(_) = e {
                         show_info(NotificationType::Warning(
                                 "Could not read config file; using defaults. Help: Restarting may solve the issue.".into()
@@ -76,11 +60,21 @@ fn main() {
                         ));
                 }
         }
-        let mut global_config = global_config.0;
+        config.0
+}
+
+fn main() {
+        let mut global_config: CoralConfig = get_config_object();
+
         println!("{global_config:?}");
-        global_config.set("john", Value::String("Doe".into()));
+        global_config.set("john", Value::String("Doe".into())).unwrap();
         println!("{global_config:?}");
         println!("{}", global_config.get("foo"));
         println!("{}", global_config.get("john"));
-        println!("{global_config:?}");       
+        global_config.set("foo", Value::Bool(!if let Value::Bool(b) = global_config.get("foo"){b}else{false})).unwrap();
+        println!("{global_config:?}");
+
+        get_tab("https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741");
+        let loaded_rickroll = system::load_song("rickroll");
+        println!("{loaded_rickroll:?}");
 }
