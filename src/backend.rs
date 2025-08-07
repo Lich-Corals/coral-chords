@@ -19,7 +19,7 @@ pub mod system {
         use std::{error::Error, path::PathBuf};
         use ug_scraper::types::*;
         use confy::{self, ConfyError};
-        use crate::backend::formats::CoralConfig;
+        use crate::backend::formats::{CoralConfig, Value};
 
         /// Save a given song as a local file
         pub fn set_file(song: Song) -> Result<(), Box<dyn Error>> {
@@ -40,14 +40,9 @@ pub mod system {
         }
 
         /// Write the config file
-        pub fn set_config(config: CoralConfig) -> Result<(), Box<dyn Error>> {
+        pub fn set_config(config: CoralConfig) -> Result<(), ConfyError> {
                 confy::store("Coral-Chords", Some("config"), config)?;
-                println!("{:?}", confy::get_configuration_file_path("Coral-Chords", Some("config")).unwrap());
                 Ok(())
-        }
-
-        pub fn set_config_property<T>(name: &str, value: T) {
-
         }
 
         /// Get the path to the locally stored tabs
@@ -63,9 +58,11 @@ pub mod formats {
         use std::hash::Hash;
         use std::{default, error::Error};
         use std::fmt;
+        use confy::ConfyError;
         use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
+        use crate::backend::system::{get_config, set_config};
 
         /// Decode loaded CCh files
         /// 
@@ -95,35 +92,40 @@ pub mod formats {
                 }
         }
 
+        /// A wrapper to store different kinds of data in a singl HashMap
+        /// 
+        /// Used to store values in the configuration file
+        #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+        pub enum Value {
+                #[default]
+                None,
+                String(String),
+                Bool(bool),
+                Int(i64),
+                Float(f64),
+        }
+
+        impl fmt::Display for Value {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        write!(f, "{:?}", self)
+                }
+        }
+
         /// The configuration used by CCh
         /// 
         /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct CoralConfig {
-                str: HashMap<String, String>,
-                bool: HashMap<String, bool>,
-                int: HashMap<String, i64>,
-                float: HashMap<String, f64>,
+                pub config: HashMap<String, Value>,
         }
 
         impl Default for CoralConfig {
                 fn default() -> CoralConfig {
                         CoralConfig {
-                                str: HashMap::from([
-                                        ("foo".to_string(), "bar".to_string()),
-                                        ("bar".to_string(), "foo".to_string()),
-                                ]),
-                                bool: HashMap::from([
-                                        ("foo".to_string(), true),
-                                        ("bar".to_string(), false),
-                                ]),
-                                int: HashMap::from([
-                                        ("foo".to_string(), 64),
-                                        ("bar".to_string(), i64::MAX),
-                                ]),
-                                float: HashMap::from([
-                                        ("foo".to_string(), 0.0),
-                                        ("bar".to_string(), f64::MAX),
+                                config: HashMap::from([
+                                        ("foo".into(), Value::Bool(true)),
+                                        ("bar".into(), Value::Int(69)),
+                                        ("greeting".into(), Value::String("Hello there!".into())),
                                 ])
                         }
                 }
@@ -132,6 +134,30 @@ pub mod formats {
         impl fmt::Display for CoralConfig {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                         write!(f, "{:?}", self)
+                }
+        }
+
+        impl CoralConfig {
+                /// Set a value in the configuration file and write it.
+                pub fn set(&mut self, key: &str, value: Value) -> Result<(), ConfyError> {
+                        for default_entry in CoralConfig::default().config {
+                                self.config.entry(default_entry.0).or_insert(default_entry.1);
+                        }
+                        if self.config.contains_key(key) {
+                                self.config.insert(key.into(), value);
+                        }
+                        set_config(self.to_owned())
+                }
+
+                /// Get a value from the config file or the default
+                pub fn get(&self, key: &str) -> Value {
+                        if self.config.contains_key(key) {
+                                return self.config.get(key).unwrap().to_owned()
+                        } else if CoralConfig::default().config.contains_key(key) {
+                                return CoralConfig::default().config.get(key).unwrap().to_owned()
+                        } else {
+                                return Value::None
+                        }
                 }
         }
 }

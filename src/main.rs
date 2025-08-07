@@ -24,7 +24,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{error::Error, thread};
 
-use crate::backend::formats::NotificationType;
+use crate::backend::formats::{NotificationType, Value};
 
 /// Handle errors
 /// 
@@ -64,8 +64,23 @@ pub fn show_info(content: NotificationType) {
 }
 
 fn main() {
-        if let Some(e) = get_config().1 {
-                show_info(NotificationType::Warning(
-                        "Could not read config file; using defaults. Help: Restarting may solve the issue.".to_string()));
+        let global_config = get_config();
+        if let Some(e) = global_config.1 {
+                if let ConfyError::BadYamlData(_) = e {
+                        show_info(NotificationType::Warning(
+                                "Could not read config file; using defaults. Help: Restarting may solve the issue.".into()
+                        ));
+                } else {
+                        show_info(NotificationType::Warning(
+                                "An error occured while reading the configuration file; using defaults. - ".to_string() + &e.to_string()
+                        ));
+                }
         }
+        let mut global_config = global_config.0;
+        println!("{global_config:?}");
+        global_config.set("john", Value::String("Doe".into()));
+        println!("{global_config:?}");
+        println!("{}", global_config.get("foo"));
+        println!("{}", global_config.get("john"));
+        println!("{global_config:?}");       
 }
