@@ -1,7 +1,16 @@
 [package]
 name = "coral_chords"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 ug-scraper = "0.1.1"
+
+[dependencies.confy]
+version = "1.0.0"
+features = ['yaml_conf']
+default-features = false
+
+[dependencies.serde]
+version = "1.0.219"
+features = ["derive"]

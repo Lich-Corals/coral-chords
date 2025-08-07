@@ -15,47 +15,54 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod backend;
-use backend::system::{store_file};
-use backend::network::{get_tab};
+use backend::system::{set_config, get_config, set_file};
+use backend::network::{};
+use backend::formats::CoralConfig;
 use ug_scraper::types::{Song};
+use std::thread::sleep;
+use std::time::Duration;
 use std::{error::Error, thread};
 
-fn handle_coral_error(error: Box<dyn Error>) {
+use crate::backend::formats::NotificationType;
+
+/// Handle errors
+/// 
+/// Notify the user or do stuff to solve the problem
+fn handle_error(error: Box<dyn Error>) {
         match error {
                 _ => (),
         }
 }
 
+/// Handle download result.
+/// 
+/// Store if successfull, else notify user
 fn handle_download_result(result: Result<Song, Box<dyn Error>>) {
         match result {
-                Err(e) => handle_coral_error(e),
+                Err(e) => handle_error(e),
                 Ok(d) => {
-                        match store_file(d) {
-                                Err(e) => handle_coral_error(e),
-                                _ => (),
+                        if let Err(e) = set_file(d) {
+                                handle_error(e);
                         }
                 },
         }
 }
 
+/// Show info to the user
+/// 
+/// This is most likely not final.
+fn show_info(content: NotificationType) {
+        let message: String = match content {
+                NotificationType::Info(c) => "Info: ".to_string() + &c,
+                NotificationType::Warning(c) => "WARNING: ".to_string() + &c,
+                NotificationType::Error(c) => "ERROR: ".to_string() + &c,
+                NotificationType::Default => return,
+        };
+        println!("{message:?}")
+}
+
 fn main() {
-        let url_to_get = "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741"; 
-        let get_chords_thread: thread::JoinHandle<()> =  thread::spawn(|| println!("E"));
-
-        let downloaded_chords  = get_chords_thread.join().unwrap();
-
-        //handle_download_result(downloaded_chords);
-
-        let valid_page_urls = vec!["https://tabs.ultimate-guitar.com/tab/queen/dont-stop-me-now-chords-519549",
-                        "https://tabs.ultimate-guitar.com/tab/rick-astley/never-gonna-give-you-up-chords-521741",
-                        "https://tabs.ultimate-guitar.com/tab/led-zeppelin/stairway-to-heaven-tabs-9488",
-                        "https://tabs.ultimate-guitar.com/tab/olli-schulz/wenn-es-gut-ist-ukulele-1381967",
-                        "https://tabs.ultimate-guitar.com/tab/bloc-party/this-modern-love-bass-180218",
-                        "https://tabs.ultimate-guitar.com/tab/phil-collins/in-the-air-tonight-drums-880599",
-                        "https://tabs.ultimate-guitar.com/tab/blink-182/feeling-this-bass-104175",
-                        "https://tabs.ultimate-guitar.com/tab/pink-floyd/empty-spaces-bass-147995"];
-        for valid_page_url in valid_page_urls {
-                println!("Testing {}", valid_page_url);
-                get_tab(valid_page_url);
+        if let Some(e) = get_config().1 {
+                show_info(NotificationType::Warning("Could not read config file; using defaults.\nMore info: ".to_string() + &e.to_string()));
         }
 }
