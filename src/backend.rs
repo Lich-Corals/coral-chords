@@ -18,19 +18,19 @@
 pub mod system {
         use std::{path::PathBuf};
         use ug_scraper::types::*;
-        use confy::{self, ConfyError};
-        use crate::backend::formats::{CoralConfig};
-        use spotify_info::{SpotifyEvent, SpotifyListener};
+        use confy::{self, ConfyError, get_configuration_file_path};
+        use crate::backend::formats::{CoralConfig, tab_dir};
 
         /// Save a given song as a local file
         pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
-                confy::store("Coral-Chords", Some(("tabs/".to_string() + song_uid).as_str()), song)?;
+                confy::store("Coral-Chords", Some((tab_dir.to_string() + "/" + song_uid).as_str()), song)?;
+                println!("{}", (tab_dir.to_string() + "/" + song_uid).as_str());
                 Ok(())
         }
 
         /// Read a requested song file
         pub fn load_song(song_uid: &str) -> Result<Song, ConfyError> {
-                confy::load::<Song>("Coral-Chords", Some(("tabs/".to_string() + song_uid).as_str()))          
+                confy::load::<Song>("Coral-Chords", Some((tab_dir.to_string() + "/" + song_uid).as_str()))          
         }
 
         /// Read the config file or return default
@@ -54,6 +54,10 @@ pub mod system {
         pub fn get_tabs_path() -> PathBuf {
                 todo!("get chord path")
         }
+
+        pub fn get_tab_path() -> Result<PathBuf, ConfyError> {
+                get_configuration_file_path("Coral-Chords", Some(tab_dir))
+        }
 }
 
 /// Formats used by Coral-Chords
@@ -65,7 +69,10 @@ pub mod formats {
         use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
-        use crate::backend::system::{get_config, set_config};
+        use crate::backend::system::{set_config};
+
+        /// The subdirectory of the config path where tab files are stored.
+        pub const tab_dir: &str = "tabs";
 
         /// Possible types of notifications which may be shown to the user
         #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -79,6 +86,8 @@ pub mod formats {
                 Warning(String),
                 /// An error; this is most likely a problem in the code or with the user giving an invalid input
                 Error(String),
+                /// An error which will close the application after being read.
+                Fatal(String),
         }
 
         impl fmt::Display for NotificationType {
