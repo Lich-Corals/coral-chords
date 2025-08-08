@@ -19,18 +19,18 @@ pub mod system {
         use std::{path::PathBuf};
         use ug_scraper::types::*;
         use confy::{self, ConfyError, get_configuration_file_path};
-        use crate::backend::formats::{CoralConfig, tab_dir};
+        use crate::backend::formats::{CoralConfig, TAB_DIR};
 
         /// Save a given song as a local file
         pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
-                confy::store("Coral-Chords", Some((tab_dir.to_string() + "/" + song_uid).as_str()), song)?;
-                println!("{}", (tab_dir.to_string() + "/" + song_uid).as_str());
+                confy::store("Coral-Chords", Some((TAB_DIR.to_string() + "/" + song_uid).as_str()), song)?;
+                println!("{}", (TAB_DIR.to_string() + "/" + song_uid).as_str());
                 Ok(())
         }
 
         /// Read a requested song file
         pub fn load_song(song_uid: &str) -> Result<Song, ConfyError> {
-                confy::load::<Song>("Coral-Chords", Some((tab_dir.to_string() + "/" + song_uid).as_str()))          
+                confy::load::<Song>("Coral-Chords", Some((TAB_DIR.to_string() + "/" + song_uid).as_str()))          
         }
 
         /// Read the config file or return default
@@ -48,22 +48,14 @@ pub mod system {
                 Ok(())
         }
 
-        /// Get the path to the locally stored tabs
-        /// 
-        /// Should use confy's config path + "/tabs" or something similar.
-        pub fn get_tabs_path() -> PathBuf {
-                todo!("get chord path")
-        }
-
         pub fn get_tab_path() -> Result<PathBuf, ConfyError> {
-                get_configuration_file_path("Coral-Chords", Some(tab_dir))
+                get_configuration_file_path("Coral-Chords", Some(TAB_DIR))
         }
 }
 
 /// Formats used by Coral-Chords
 pub mod formats {
         use std::sync::mpsc::{Receiver, TryRecvError};
-        use std::{error::Error};
         use std::fmt;
         use confy::ConfyError;
         use ug_scraper::types::*;
@@ -72,7 +64,7 @@ pub mod formats {
         use crate::backend::system::{set_config};
 
         /// The subdirectory of the config path where tab files are stored.
-        pub const tab_dir: &str = "tabs";
+        pub const TAB_DIR: &str = "tabs";
 
         /// Possible types of notifications which may be shown to the user
         #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -108,6 +100,7 @@ pub mod formats {
                 Int(i64),
                 Float(f64),
                 Notification(NotificationType),
+                SearchResults(Vec<SearchResult>),
         }
 
         impl fmt::Display for Value {

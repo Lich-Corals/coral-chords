@@ -17,13 +17,15 @@
 mod backend;
 
 use confy::ConfyError;
-use std::thread::{self, JoinHandle};
+use std::mem::replace;
+use std::thread::{self};
 use std::sync::mpsc::{self};
+use ug_scraper::types::{Song};
 use mpris::{Metadata, PlayerFinder};
 
-use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, tab_dir};
+use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, TAB_DIR};
 use crate::backend::{network, system};
-use crate::backend::system::{get_config, get_tabs_path, store_song};
+use crate::backend::system::{get_config, load_song, store_song};
 
 /// Show info to the user
 /// 
@@ -61,7 +63,7 @@ pub fn spawn_get_tab_thread(url: String, song_uid: String, rec: &mut GlobalRecei
         rec.0.push(rx);
 }
 
-/// Wrapper for getting a config object
+/// Wrapper for getting a config object to use as global
 fn get_config_object() -> CoralConfig {
         let config = get_config();
         if let Some(e) = config.1 {
@@ -83,6 +85,32 @@ fn get_config_object() -> CoralConfig {
 /// Gets triggered by the [`crate::backend::formats::GlobalReceivers::update`] function.
 pub fn handle_received_value(value: Value) {
         println!("VALUE RECEIVED {}", value);
+}
+
+/// Load song data or ask for download
+pub fn get_song_data_by_uid(song_uid: &String, ask: bool) {
+        match system::get_tab_path() {
+                Ok(mut p) => {
+                        p.pop();
+                        p.push(TAB_DIR);
+                        p.push(song_uid.clone() + ".yml");
+
+                        if p.is_file() {
+                                match load_song(&song_uid) {
+                                        Ok(s) => song_to_ui(s),
+                                        Err(e) => show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
+                                }
+                        } else if ask {
+                                todo!("Ask user to download a tab (show search results)")
+                        }
+                }
+                Err(e) => show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),
+        }
+}
+
+/// Write a given Song's lines to UI 
+pub fn song_to_ui(song: Song) {
+        todo!("show the given tab to the user (project lines to UI)")
 }
 
 fn main() {
@@ -108,6 +136,12 @@ fn main() {
         if player.is_some() {
                 let player = player.unwrap();
 
+                // This should be saved at the end of every loop cycle.
+                let mut song_id_previoes_cycle: String = String::new();
+                // This will be used to check wether the display is showing the currently running song.
+                // It will not be the case if no tob is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
+                let mut song_id_display: String = String::new();
+
                 // FOLLOWING WILL BE IN THE UPDATE LOOP BELOW!
                 song_metadata = match player.get_metadata() {
                         Ok(md) => Some(md),
@@ -118,22 +152,16 @@ fn main() {
                 };
                 if song_metadata.is_some() {
                         let song_uid: String = match song_metadata.unwrap().track_id() {
-                                Some(id) => id.to_string().replace("/com/spotify/track/", ""),
+                                Some(id) => id.to_string().replace("/com/spotify/track/", "")
+                                        .replace("/", "")
+                                        .replace(" ", ""),
                                 None => "unknown".into(),
                         };
-                        match system::get_tab_path() {
-                                Ok(mut p) => {
-                                        p.pop();
-                                        p.push(tab_dir);
-                                        p.push(song_uid.clone() + ".yml");
-
-                                        if p.is_file() {
-                                                todo!("Send tab data to UI")
-                                        } else {
-                                                todo!("Ask user to download a tab")
-                                        }
-                                }
-                                Err(e) => show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),
+                        if song_id_previoes_cycle != song_uid {
+                                get_song_data_by_uid(&song_uid, true);
+                        }
+                        if song_id_display != song_uid {
+                                get_song_data_by_uid(&song_uid, false);
                         }
                 }
                 
