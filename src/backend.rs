@@ -20,6 +20,7 @@ pub mod system {
         use ug_scraper::types::*;
         use confy::{self, ConfyError};
         use crate::backend::formats::{CoralConfig};
+        use spotify_info::{SpotifyEvent, SpotifyListener};
 
         /// Save a given song as a local file
         pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
@@ -57,6 +58,7 @@ pub mod system {
 
 /// Formats used by Coral-Chords
 pub mod formats {
+        use std::sync::mpsc::{Receiver, TryRecvError};
         use std::{error::Error};
         use std::fmt;
         use confy::ConfyError;
@@ -65,16 +67,8 @@ pub mod formats {
         use std::collections::HashMap;
         use crate::backend::system::{get_config, set_config};
 
-        /// Decode loaded CCh files
-        /// 
-        /// Might not be needed if using a new struct and confy for storing and loading tabs
-        /// Otherwise, it should be a good idea to load and save using serde and serialization, rendering this function useless too.
-        pub fn decode_file(raw_data: String) -> Result<Song, Box<dyn Error>> {
-                todo!("Decode raw data")
-        }
-
         /// Possible types of notifications which may be shown to the user
-        #[derive(Debug, Clone, Default)]
+        #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
         pub enum NotificationType {
                 #[default]
                 /// This does nothing but allowing the `Default` trait
@@ -95,7 +89,7 @@ pub mod formats {
 
         /// A wrapper to store different kinds of data in a single HashMap
         /// 
-        /// Used to store values in the configuration file
+        /// Used to store values in the configuration file and to send data between threads
         #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
         pub enum Value {
                 #[default]
@@ -104,11 +98,30 @@ pub mod formats {
                 Bool(bool),
                 Int(i64),
                 Float(f64),
+                Notification(NotificationType),
         }
 
         impl fmt::Display for Value {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                         write!(f, "{:?}", self)
+                }
+        }
+
+        /// A struct to represent a list of currently active receivers
+        #[derive(Debug, Default)]
+        pub struct GlobalReceivers(pub Vec<Receiver<Value>>);
+
+        impl GlobalReceivers {
+                /// Checks for results in any receiver and triggers the handler if one is found.
+                pub fn update(&mut self) {
+                        for i in 0..self.0.len() {
+                                match self.0[i].try_recv() {
+                                        Ok(v) => crate::handle_received_value(v),
+                                        Err(e) => if let TryRecvError::Disconnected = e {
+                                                self.0.remove(i);
+                                        },
+                                }
+                        }        
                 }
         }
 
