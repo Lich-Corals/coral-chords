@@ -19,10 +19,12 @@ mod backend;
 use confy::ConfyError;
 use iced::Alignment::Center;
 use iced::{Subscription, Theme};
-use iced::time::{self, Duration, Instant};
+use iced::time::{self, Duration};
+use iced::color;
 use iced::widget::{button, column, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
+use std::vec;
 use ug_scraper::types::{SearchResult, Song};
 use mpris::{Metadata, PlayerFinder, Player};
 
@@ -54,8 +56,6 @@ struct ApplicationState {
         player: Option<Player>,
         /// The current value in the search bar
         search_value: String,
-        /// The placeholder for the search bar
-        search_placeholder: String,
         /// The current search status
         search_state: SearchState,   
         /// The UID of the currently running song
@@ -96,7 +96,6 @@ impl Default for ApplicationState {
                         song_id_display: String::new(),
                         player: player,
                         search_value: String::new(),
-                        search_placeholder: String::new(),
                         search_state: SearchState::default(),
                         current_song_uid: String::new(),
                 }
@@ -156,22 +155,54 @@ impl ApplicationState {
                                 Column::new()
                         }, 
                         Screen::Search => {
-                                let mut column = column![];
+                                let mut title_column = column![];
+                                let mut artist_column = column![];
+                                let mut rating_column = column![];
+                                let mut rating_count_column = column![];
                                 if let SearchState::Finished(s) = &self.search_state {
-                                        for search_result in s {
-                                                let title = search_result.basic_data.title.as_str();
+                                        let mut sorted_results = s.clone();
+                                        sorted_results.sort_by_key(|s| s.rating_value as i32 * -1);
+                                        for search_result in sorted_results {
+                                                let title = search_result.basic_data.title.clone();
+                                                let artist = search_result.basic_data.artist.clone();
                                                 let url = search_result.basic_data.tab_link.clone();
-                                                column = column.push(row![
+                                                let rating_count = search_result.rating_count;
+                                                let rating: String;
+                                                let rating_count_string: String;
+                                                if rating_count > 0 {
+                                                        rating = format!("{:.1$}/5", search_result.rating_value, 1);
+                                                        rating_count_string = format!("x{rating_count:?}");
+                                                } else {
+                                                        rating = "?".into();
+                                                        rating_count_string = "".into();
+                                                }
+                                                let row_height = 40;
+                                                title_column = title_column.push(row![
                                                         button("Download")
                                                                 .on_press(Message::DownloadTab(url)),
                                                         Space::new(10, 0),
                                                         text(title),
                                                         Space::new(30, 0),
-                                                ]).push(Space::new(0, 10));
+                                                ].height(row_height).align_y(Center));
+                                                artist_column = artist_column.push(row![
+                                                        text("by "),
+                                                        text(artist).color(color!(0xea76cb)),
+                                                        Space::new(30, 0),
+                                                ].height(row_height).align_y(Center));
+                                                rating_column = rating_column.push(row![
+                                                        text("Rating: "),
+                                                        text(rating).color(color!(0xdd7878)),
+                                                        Space::new(10, 0),
+                                                ].height(row_height).align_y(Center));
+                                                rating_count_column = rating_count_column.push(row![
+                                                        text(rating_count_string).color(color!(0xdd7878)),
+                                                ].height(row_height).align_y(Center));
                                         }
                                 }
                                 column![container(
-                                        scrollable(column)
+                                        scrollable(row![
+                                                title_column, artist_column, rating_column, rating_count_column,
+                                        ])
                                         .spacing(10))
                                         .padding(10)]
                         },
@@ -205,7 +236,6 @@ impl ApplicationState {
                         },
                         Screen::Search => {
                                 let value = &self.search_value;
-                                let placeholder = &self.search_placeholder;
                                 row![
                                         button("Tab")
                                                 .on_press(Message::TabsPage)
@@ -219,7 +249,7 @@ impl ApplicationState {
                                                 .style(button::secondary)
                                                 .padding(button_padding),
                                         Space::new(100, 1),
-                                        text_input(placeholder, value)
+                                        text_input("Search a tab...", value)
                                                 .on_input(Message::UpdateSearchBar)
                                                 .width(300),
                                         button("Go!")
@@ -266,8 +296,6 @@ impl ApplicationState {
 
 
         pub fn update(&mut self, message: Message) {
-                println!("{:?}", self.search_state);
-
                 // First parts are updating the UI
 
                 // Execute commands associated to messages
@@ -289,13 +317,6 @@ impl ApplicationState {
                         Screen::Settings => {
                                 self.theme = get_theme(&mut self.config);
                         },
-                        Screen::Search => {
-                                println!("{:?}", self.search_state);
-                                self.search_placeholder = match self.search_state {
-                                        SearchState::Searching => "Searching...".into(),
-                                        _ => "Search a tab...".into(),
-                                }
-                        }
                         _ => (),
                 }
 
@@ -342,7 +363,7 @@ impl ApplicationState {
                         match v {
                                 Value::Notification(n) => self.notifications.push(n),
                                 Value::SearchResults(s) => self.search_state = SearchState::Finished(s),
-                                _ => println!("Received: {}", v),
+                                _ => (),
                         }
                 } 
         }
