@@ -61,6 +61,7 @@ pub mod formats {
         use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
+        use iced::Theme;
         use crate::backend::system::{set_config};
 
         /// The subdirectory of the config path where tab files are stored.
@@ -86,6 +87,24 @@ pub mod formats {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     write!(f, "{}", self)
                 }
+        }
+
+        /// Function to get the currently configured theme
+        pub fn get_theme(mut global_settings: CoralConfig) -> Theme {
+                match global_settings.get("theme") {
+                        Value::String(t) => match t.as_str() {
+                                "Light" => Theme::Light,
+                                "Dark" => Theme::Dark,
+                                "Dracula" => Theme::Dracula,
+                                "CatppuccinMocha" => Theme::CatppuccinMocha,
+                                "CatppuccinLatte" => Theme::CatppuccinLatte,
+                                "SolarizedLight" => Theme::SolarizedLight,
+                                "SolarizedDark" => Theme::SolarizedDark,
+                                _ => Theme::CatppuccinMocha,
+                        },
+                        _ => Theme::CatppuccinMocha,
+                }
+
         }
 
         /// A wrapper to store different kinds of data in a single HashMap
@@ -139,9 +158,7 @@ pub mod formats {
                 fn default() -> CoralConfig {
                         CoralConfig {
                                 config: HashMap::from([
-                                        ("foo".into(), Value::Bool(true)),
-                                        ("bar".into(), Value::Int(69)),
-                                        ("greeting".into(), Value::String("Hello there!".into())),
+                                        ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
                                 ])
                         }
                 }
@@ -166,10 +183,11 @@ pub mod formats {
                 }
 
                 /// Get a value from the config file or the default
-                pub fn get(&self, key: &str) -> Value {
+                pub fn get(&mut self, key: &str) -> Value {
                         if self.config.contains_key(key) {
                                 return self.config.get(key).unwrap().to_owned()
                         } else if CoralConfig::default().config.contains_key(key) {
+                                if let Err(_) = self.set(key, CoralConfig::default().config.get(key).unwrap().clone()){};
                                 return CoralConfig::default().config.get(key).unwrap().to_owned()
                         } else {
                                 return Value::None

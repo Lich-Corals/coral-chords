@@ -17,15 +17,180 @@
 mod backend;
 
 use confy::ConfyError;
-use std::mem::replace;
+use iced::Alignment::Center;
+use iced::{Theme};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use ug_scraper::types::{Song};
 use mpris::{Metadata, PlayerFinder};
 
-use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, TAB_DIR};
+use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, TAB_DIR, get_theme};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
+
+use iced::widget::{button, column, row, Column, Row, Space, toggler};
+
+/// The application's properties
+struct ApplicationState {
+        screen: Screen,
+        theme: Theme,
+        /// The globally used config object
+        config: CoralConfig,
+        /// Receivers used to communicate with threads
+        receivers: GlobalReceivers,
+        /// Wether to check for a song-change.
+        playing: bool,
+        /// Notifications which will be sent to user using the notification bar
+        /// 
+        /// Those notifications shall be received from show_info() 
+        notifications: Vec<NotificationType>,
+        /// The song that was playing during the last cycle.
+        /// If changed, it will trigger an update of the UI or a prompt to download a song.
+        song_id_previoes_cycle: String,
+        /// This will be used to check wether the display is showing the currently running song.
+        /// It will not be the case if no tob is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
+        song_id_display: String,
+
+}
+
+impl Default for ApplicationState {
+        fn default() -> Self {
+                ApplicationState { 
+                        screen: Screen::default(), 
+                        theme: get_theme(get_config_object()), 
+                        config: get_config_object(),
+                        receivers: GlobalReceivers(vec![]),
+                        playing: false,
+                        notifications: vec![],
+                        song_id_previoes_cycle: String::new(),
+                        song_id_display: String::new(),
+                }
+        }
+}
+
+/// Messages used to trigger actions from the UI
+#[derive(Debug, Clone, Copy)]
+enum Message {
+        /// Changed to tabs page
+        TabsPage,
+        /// Changed to search page
+        SearchPage,
+        /// Changed to settings page
+        SettingsPage,
+        /// Toggled playing toggle
+        PlayingToggled(bool),
+}
+
+impl ApplicationState {
+        pub fn theme(&self) -> Theme {
+                self.theme.clone()
+        }
+
+        /// Function to get the current view
+        pub fn view(&self) -> Column<Message> {
+                let button_padding: [u16; 2] = [4, 12];
+                // The header bar containing basic controls
+                let controls: Row<Message> = match self.screen {
+                        Screen::Tabs => { row![
+                                        button("Tab")
+                                                .on_press(Message::TabsPage)
+                                                .padding(button_padding),
+                                        button("Search")
+                                                .on_press(Message::SearchPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                        button("Settings")
+                                                .on_press(Message::SettingsPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                        Space::new(100, 1),
+                                        toggler(self.playing)
+                                                .label("Play")
+                                                .on_toggle(Message::PlayingToggled)
+                                ].align_y(Center)
+                        },
+                        Screen::Search => { row![
+                                        button("Tab")
+                                                .on_press(Message::TabsPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                        button("Search")
+                                                .on_press(Message::SearchPage)
+                                                .padding(button_padding),
+                                        button("Settings")
+                                                .on_press(Message::SettingsPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                ]
+                        },
+                        Screen::Settings => { row![
+                                        button("Tab")
+                                                .on_press(Message::TabsPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                        button("Search")
+                                                .on_press(Message::SearchPage)
+                                                .style(button::secondary)
+                                                .padding(button_padding),
+                                        button("Settings")
+                                                .on_press(Message::SettingsPage)
+                                                .padding(button_padding),
+                                ]
+                        },
+                };
+
+                // The main contents of the window
+                let contents = match self.screen {
+                        Screen::Tabs => {
+                                Column::new()
+                        }, 
+                        Screen::Search => {
+                                Column::new()
+                        },
+                        Screen::Settings => {
+                                column![
+
+                                ]
+                        }
+                };
+
+                // A bar sitting at the bottom of the window to show messages to the user
+                let message_bar: Row<Message> = row![
+
+                ];
+
+                column![controls, contents, message_bar]
+
+        }
+
+        pub fn update(&mut self, message: Message) {
+                match message {
+                        Message::TabsPage => self.screen = Screen::Tabs,
+                        Message::SearchPage => self.screen = Screen::Search,
+                        Message::SettingsPage => self.screen = Screen::Settings,
+
+                        Message::PlayingToggled(s) => self.playing = s,
+                        _ => (),
+                }
+
+                match self.screen {
+                        Screen::Settings => {
+                                self.theme = get_theme(self.config.clone());
+                        },
+                        _ => (),
+                }
+
+                self.receivers.update();
+        }
+}
+
+#[derive(Default)]
+enum Screen {
+        #[default]
+        Tabs,
+        Search,
+        Settings,
+}
 
 /// Show info to the user
 /// 
@@ -114,8 +279,11 @@ pub fn song_to_ui(song: Song) {
 }
 
 fn main() {
-        let mut global_config: CoralConfig = get_config_object();
-        let mut global_receivers: GlobalReceivers = GlobalReceivers(vec![]);
+
+        let _ = iced::application("Coral-Chords", ApplicationState::update, ApplicationState::view)
+                .centered()
+                .theme(ApplicationState::theme)
+                .run();
 
         // THIS MUST HAPPEN WHEN POPUPS ARE POSSIBLE.
         let player = match PlayerFinder::new() {
@@ -138,8 +306,7 @@ fn main() {
 
                 // This should be saved at the end of every loop cycle.
                 let mut song_id_previoes_cycle: String = String::new();
-                // This will be used to check wether the display is showing the currently running song.
-                // It will not be the case if no tob is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
+                
                 let mut song_id_display: String = String::new();
 
                 // FOLLOWING WILL BE IN THE UPDATE LOOP BELOW!
@@ -164,18 +331,5 @@ fn main() {
                                 get_song_data_by_uid(&song_uid, false);
                         }
                 }
-                
-                loop {
-                        global_receivers.update();
-                }
         }
-
-
-        println!("{global_config:?}");
-        global_config.set("john", Value::String("Doe".into())).unwrap();
-        println!("{global_config:?}");
-        println!("{}", global_config.get("foo"));
-        println!("{}", global_config.get("john"));
-        global_config.set("foo", Value::Bool(!if let Value::Bool(b) = global_config.get("foo"){b}else{false})).unwrap();
-        println!("{global_config:?}");        
 }
