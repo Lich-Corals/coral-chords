@@ -18,7 +18,9 @@ mod backend;
 
 use confy::ConfyError;
 use iced::Alignment::Center;
-use iced::{Theme};
+use iced::{Subscription, Theme};
+use iced::time::{self, Duration, Instant};
+use iced::widget::{button, column, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use ug_scraper::types::{SearchResult, Song};
@@ -27,8 +29,6 @@ use mpris::{Metadata, PlayerFinder, Player};
 use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR, get_theme};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
-
-use iced::widget::{button, column, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
 
 /// The application's properties
 struct ApplicationState {
@@ -122,6 +122,8 @@ enum Message {
         ClearSearch,
         /// Download a tab
         DownloadTab(String),
+        /// Update the application
+        Update,
 }
 
 #[derive(Default)]
@@ -147,6 +149,39 @@ impl ApplicationState {
 
         /// Function to get the current view
         pub fn view(&self) -> Column<'_, Message> {
+
+                // The main contents of the window
+                let contents = match self.screen {
+                        Screen::Tabs => {
+                                Column::new()
+                        }, 
+                        Screen::Search => {
+                                let mut column = column![];
+                                if let SearchState::Finished(s) = &self.search_state {
+                                        for search_result in s {
+                                                let title = search_result.basic_data.title.as_str();
+                                                let url = search_result.basic_data.tab_link.clone();
+                                                column = column.push(row![
+                                                        button("Download")
+                                                                .on_press(Message::DownloadTab(url)),
+                                                        Space::new(10, 0),
+                                                        text(title),
+                                                        Space::new(30, 0),
+                                                ]).push(Space::new(0, 10));
+                                        }
+                                }
+                                column![container(
+                                        scrollable(column)
+                                        .spacing(10))
+                                        .padding(10)]
+                        },
+                        Screen::Settings => {
+                                column![
+
+                                ]
+                        }
+                };
+
                 let button_padding: [u16; 2] = [4, 12];
                 // The header bar containing basic controls
                 let controls: Row<Message> = match self.screen {
@@ -212,37 +247,6 @@ impl ApplicationState {
                         },
                 };
 
-                // The main contents of the window
-                let contents = match self.screen {
-                        Screen::Tabs => {
-                                Column::new()
-                        }, 
-                        Screen::Search => {
-                                let mut column = column![];
-                                if let SearchState::Finished(s) = &self.search_state {
-                                        for search_result in s {
-                                                let title = search_result.basic_data.title.as_str();
-                                                let url = search_result.basic_data.tab_link.clone();
-                                                column = column.push(row![
-                                                        button("Download")
-                                                                .on_press(Message::DownloadTab(url)),
-                                                        Space::new(10, 1),
-                                                        text(title),
-                                                        Space::new(30, 10),
-                                                ]);
-                                        }
-                                }
-                                column![container(
-                                        scrollable(column))
-                                        .padding(10)]
-                        },
-                        Screen::Settings => {
-                                column![
-
-                                ]
-                        }
-                };
-
                 // A bar sitting at the bottom of the window to show messages to the user
                 let message_bar: Row<Message> = row![
 
@@ -251,6 +255,15 @@ impl ApplicationState {
                 column![controls, contents, message_bar]
 
         }
+
+        fn subscription(&self) -> Subscription<Message> {
+                if let SearchState::Searching = self.search_state {
+                        time::every(Duration::from_millis(200)).map(|_| Message::Update)
+                } else {
+                        Subscription::none()
+                }
+        }
+
 
         pub fn update(&mut self, message: Message) {
                 println!("{:?}", self.search_state);
@@ -268,6 +281,7 @@ impl ApplicationState {
                         Message::SearchTabs => self.search_tabs(),
                         Message::ClearSearch => self.search_value = "".into(),
                         Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
+                        _ => (),
                 }
 
                 // Update dependent of UI location
@@ -276,6 +290,7 @@ impl ApplicationState {
                                 self.theme = get_theme(&mut self.config);
                         },
                         Screen::Search => {
+                                println!("{:?}", self.search_state);
                                 self.search_placeholder = match self.search_state {
                                         SearchState::Searching => "Searching...".into(),
                                         _ => "Search a tab...".into(),
@@ -326,7 +341,7 @@ impl ApplicationState {
                 if let Ok(v) = self.channel.1.try_recv() {
                         match v {
                                 Value::Notification(n) => self.notifications.push(n),
-                                Value::SearchResults(s) => self.search_to_ui(s),
+                                Value::SearchResults(s) => self.search_state = SearchState::Finished(s),
                                 _ => println!("Received: {}", v),
                         }
                 } 
@@ -340,11 +355,6 @@ impl ApplicationState {
         /// Might need to be changed to accept data from threads
         pub fn show_info(&mut self, content: NotificationType) {
                 self.notifications.push(content);
-        }
-
-        /// Tell the update function to show search results
-        pub fn search_to_ui(&mut self, search_results: Vec<SearchResult>) {
-                self.search_state = SearchState::Finished(search_results)
         }
 
         pub fn search_tabs(&mut self) {
@@ -437,5 +447,6 @@ fn main() {
         let _ = iced::application("Coral-Chords", ApplicationState::update, ApplicationState::view)
                 .centered()
                 .theme(ApplicationState::theme)
+                .subscription(ApplicationState::subscription)
                 .run();
 }
