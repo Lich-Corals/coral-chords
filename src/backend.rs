@@ -63,6 +63,7 @@ pub mod formats {
         use std::collections::HashMap;
         use iced::Theme;
         use crate::backend::system::{set_config};
+        use crate::ApplicationState;
 
         /// The subdirectory of the config path where tab files are stored.
         pub const TAB_DIR: &str = "tabs";
@@ -90,7 +91,7 @@ pub mod formats {
         }
 
         /// Function to get the currently configured theme
-        pub fn get_theme(mut global_settings: CoralConfig) -> Theme {
+        pub fn get_theme(global_settings: &mut CoralConfig) -> Theme {
                 match global_settings.get("theme") {
                         Value::String(t) => match t.as_str() {
                                 "Light" => Theme::Light,
@@ -134,10 +135,10 @@ pub mod formats {
 
         impl GlobalReceivers {
                 /// Checks for results in any receiver and triggers the handler if one is found.
-                pub fn update(&mut self) {
+                pub fn update(&mut self, queue: &mut Vec<Value>) {
                         for i in 0..self.0.len() {
                                 match self.0[i].try_recv() {
-                                        Ok(v) => crate::handle_received_value(v),
+                                        Ok(v) => queue.push(v),
                                         Err(e) => if let TryRecvError::Disconnected = e {
                                                 self.0.remove(i);
                                         },
@@ -146,7 +147,7 @@ pub mod formats {
                 }
         }
 
-        /// The configuration used by CCh
+        /// The uration used by CCh
         /// 
         /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
         #[derive(Debug, Clone, Serialize, Deserialize)]
