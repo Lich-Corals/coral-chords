@@ -24,7 +24,7 @@ use std::sync::mpsc::{self};
 use ug_scraper::types::{SearchResult, Song};
 use mpris::{Metadata, PlayerFinder, Player};
 
-use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, TAB_DIR, get_theme};
+use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR, get_theme};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
 
@@ -36,8 +36,8 @@ struct ApplicationState {
         theme: Theme,
         /// The globally used config object
         config: CoralConfig,
-        /// Receivers used to communicate with threads
-        receivers: GlobalReceivers,
+        /// The channel to communicate with other threads
+        channel: (std::sync::mpsc::Sender<Value>, std::sync::mpsc::Receiver<Value>),
         /// Wether to check for a song-change.
         playing: bool,
         /// Notifications which will be sent to user using the notification bar
@@ -52,8 +52,6 @@ struct ApplicationState {
         song_id_display: String,
         /// The mpris player object used to communicate with audio players
         player: Option<Player>,
-        /// A queue of values to process
-        received_queue: Vec<Value>,
         /// The current value in the search bar
         search_value: String,
         /// The placeholder for the search bar
@@ -91,13 +89,12 @@ impl Default for ApplicationState {
                         screen: Screen::default(), 
                         theme: get_theme(&mut config_result.0), 
                         config: config_result.0,
-                        receivers: GlobalReceivers(vec![]),
+                        channel: mpsc::channel::<Value>(),
                         playing: false,
                         notifications: notifications,
                         song_id_previoes_cycle: String::new(),
                         song_id_display: String::new(),
                         player: player,
-                        received_queue: vec![],
                         search_value: String::new(),
                         search_placeholder: String::new(),
                         search_state: SearchState::default(),
@@ -256,6 +253,8 @@ impl ApplicationState {
         }
 
         pub fn update(&mut self, message: Message) {
+                println!("{:?}", self.search_state);
+
                 // First parts are updating the UI
 
                 // Execute commands associated to messages
@@ -286,7 +285,7 @@ impl ApplicationState {
                 }
 
                 // Following is updating the program's main logic
-                let mut song_metadata: Option<Metadata>;
+                let song_metadata: Option<Metadata>;
                 if self.player.is_some() {
                         let player = self.player.as_ref().unwrap();
 
@@ -324,16 +323,13 @@ impl ApplicationState {
                 }
 
                 // Check if any thread returned a value
-                self.receivers.update(&mut self.received_queue);
-                if !self.received_queue.is_empty() {
-                        for received_value in self.received_queue.to_owned() {
-                                match received_value {
-                                        Value::Notification(n) => self.notifications.push(n),
-                                        Value::SearchResults(s) => self.search_to_ui(s),
-                                        _ => println!("Received: {}", received_value), 
-                                }
+                if let Ok(v) = self.channel.1.try_recv() {
+                        match v {
+                                Value::Notification(n) => self.notifications.push(n),
+                                Value::SearchResults(s) => self.search_to_ui(s),
+                                _ => println!("Received: {}", v),
                         }
-                }
+                } 
         }
 
         /// Show info to the user
@@ -352,10 +348,14 @@ impl ApplicationState {
         }
 
         pub fn search_tabs(&mut self) {
+                let tx = self.channel.0.clone();
                 self.search_state = SearchState::Searching;
                 let search_query = self.search_value.clone();
-                let (tx, rx) = mpsc::channel::<Value>();
-                thread::spawn(move || match network::search(search_query.as_str()) {
+                let search_depth: u8 = match self.config.get("search_depth".into()) {
+                        Value::Int(d) => d as u8,
+                        _ => 2,
+                };
+                thread::spawn(move || match network::search(search_query.as_str(), search_depth) {
                         Ok(s) => {
                                 if let Err(e) = tx.send(Value::SearchResults(s)) {
                                         if let Err(e) = tx.send(Value::Notification(
@@ -369,12 +369,11 @@ impl ApplicationState {
                                 println!("Could not send message: {}", e);
                         },
                 });
-                self.receivers.0.push(rx);
         }
 
         /// Download and store a tab locally
         pub fn spawn_get_tab_thread(&mut self, url: String, song_uid: String) {
-                let (tx, rx) = mpsc::channel::<Value>();
+                let tx = self.channel.0.clone();
                 // A thread is spawned to prevent freezing UI
                 thread::spawn(move || match network::get_tab(&url) {
                         Ok(s) => if let Err(e) = store_song(s, song_uid.as_str()) {
@@ -388,7 +387,6 @@ impl ApplicationState {
                                 println!("Could not send message: {}", e);
                         },
                 });
-                self.receivers.0.push(rx);
         }
 
         /// Write a given Song's lines to UI 

@@ -55,7 +55,6 @@ pub mod system {
 
 /// Formats used by Coral-Chords
 pub mod formats {
-        use std::sync::mpsc::{Receiver, TryRecvError};
         use std::fmt;
         use confy::ConfyError;
         use ug_scraper::types::*;
@@ -128,26 +127,6 @@ pub mod formats {
                 }
         }
 
-        /// A struct to represent a list of currently active receivers
-        #[derive(Debug, Default)]
-        pub struct GlobalReceivers(pub Vec<Receiver<Value>>);
-
-        impl GlobalReceivers {
-                /// Checks for results in any receiver and triggers the handler if one is found.
-                pub fn update(&mut self, queue: &mut Vec<Value>) {
-                        for i in 0..self.0.len() {
-                                match self.0[i].try_recv() {
-                                        Ok(v) => queue.push(v),
-                                        Err(e) => if let TryRecvError::Disconnected = e {
-                                                if self.0.len() > i {
-                                                        self.0.remove(i);
-                                                }
-                                        },
-                                }
-                        }
-                }
-        }
-
         /// The uration used by CCh
         /// 
         /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
@@ -161,6 +140,7 @@ pub mod formats {
                         CoralConfig {
                                 config: HashMap::from([
                                         ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
+                                        ("search_depth".into(), Value::Int(2)),
                                 ])
                         }
                 }
@@ -200,9 +180,6 @@ pub mod formats {
 
 /// Accessing UG
 pub mod network {
-        use std::u8;
-
-        use serde::Serialize;
         use ug_scraper::types::{SearchResult, Song};
         use ug_scraper::tab_scraper::get_song_data;
         use ug_scraper::search_scraper::get_search_results;
@@ -217,8 +194,8 @@ pub mod network {
                 }
         }
 
-        pub fn search(query: &str) -> Result<Vec<SearchResult>, String>{
-                match get_search_results(query, 2) {
+        pub fn search(query: &str, depth: u8) -> Result<Vec<SearchResult>, String>{
+                match get_search_results(query, depth) {
                         Ok(s) => Ok(s),
                         Err(e) => Err(e.to_string()),
                 }
