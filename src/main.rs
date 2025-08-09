@@ -21,14 +21,14 @@ use iced::Alignment::Center;
 use iced::{Theme};
 use std::thread::{self};
 use std::sync::mpsc::{self};
-use ug_scraper::types::{Song};
+use ug_scraper::types::{SearchResult, Song};
 use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, GlobalReceivers, NotificationType, Value, TAB_DIR, get_theme};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
 
-use iced::widget::{button, column, row, Column, Row, Space, toggler};
+use iced::widget::{button, column, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
 
 /// The application's properties
 struct ApplicationState {
@@ -48,13 +48,20 @@ struct ApplicationState {
         /// If changed, it will trigger an update of the UI or a prompt to download a song.
         song_id_previoes_cycle: String,
         /// This will be used to check wether the display is showing the currently running song.
-        /// It will not be the case if no tob is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
+        /// It will not be the case if no tab is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
         song_id_display: String,
         /// The mpris player object used to communicate with audio players
         player: Option<Player>,
         /// A queue of values to process
         received_queue: Vec<Value>,
-
+        /// The current value in the search bar
+        search_value: String,
+        /// The placeholder for the search bar
+        search_placeholder: String,
+        /// The current search status
+        search_state: SearchState,   
+        /// The UID of the currently running song
+        current_song_uid: String,     
 }
 
 impl Default for ApplicationState {
@@ -91,12 +98,16 @@ impl Default for ApplicationState {
                         song_id_display: String::new(),
                         player: player,
                         received_queue: vec![],
+                        search_value: String::new(),
+                        search_placeholder: String::new(),
+                        search_state: SearchState::default(),
+                        current_song_uid: String::new(),
                 }
         }
 }
 
 /// Messages used to trigger actions from the UI
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
         /// Changed to tabs page
         TabsPage,
@@ -106,6 +117,14 @@ enum Message {
         SettingsPage,
         /// Toggled playing toggle
         PlayingToggled(bool),
+        /// Update the value of the search bar
+        UpdateSearchBar(String),
+        /// Launch a search for the current value
+        SearchTabs,
+        /// Clear the search bar
+        ClearSearch,
+        /// Download a tab
+        DownloadTab(String),
 }
 
 #[derive(Default)]
@@ -116,13 +135,21 @@ enum Screen {
         Settings,
 }
 
+#[derive(Debug, Default)]
+enum SearchState {
+        #[default]
+        None,
+        Searching,
+        Finished(Vec<SearchResult>),
+}
+
 impl ApplicationState {
         pub fn theme(&self) -> Theme {
                 self.theme.clone()
         }
 
         /// Function to get the current view
-        pub fn view(&self) -> Column<Message> {
+        pub fn view(&self) -> Column<'_, Message> {
                 let button_padding: [u16; 2] = [4, 12];
                 // The header bar containing basic controls
                 let controls: Row<Message> = match self.screen {
@@ -144,7 +171,10 @@ impl ApplicationState {
                                                 .on_toggle(Message::PlayingToggled)
                                 ].align_y(Center)
                         },
-                        Screen::Search => { row![
+                        Screen::Search => {
+                                let value = &self.search_value;
+                                let placeholder = &self.search_placeholder;
+                                row![
                                         button("Tab")
                                                 .on_press(Message::TabsPage)
                                                 .style(button::secondary)
@@ -155,6 +185,17 @@ impl ApplicationState {
                                         button("Settings")
                                                 .on_press(Message::SettingsPage)
                                                 .style(button::secondary)
+                                                .padding(button_padding),
+                                        Space::new(100, 1),
+                                        text_input(placeholder, value)
+                                                .on_input(Message::UpdateSearchBar)
+                                                .width(300),
+                                        button("Go!")
+                                                .on_press(Message::SearchTabs)
+                                                .padding(button_padding),
+                                        Space::new(10, 1),
+                                        button("Clear")
+                                                .on_press(Message::ClearSearch)
                                                 .padding(button_padding),
                                 ]
                         },
@@ -180,7 +221,23 @@ impl ApplicationState {
                                 Column::new()
                         }, 
                         Screen::Search => {
-                                Column::new()
+                                let mut column = column![];
+                                if let SearchState::Finished(s) = &self.search_state {
+                                        for search_result in s {
+                                                let title = search_result.basic_data.title.as_str();
+                                                let url = search_result.basic_data.tab_link.clone();
+                                                column = column.push(row![
+                                                        button("Download")
+                                                                .on_press(Message::DownloadTab(url)),
+                                                        Space::new(10, 1),
+                                                        text(title),
+                                                        Space::new(30, 10),
+                                                ]);
+                                        }
+                                }
+                                column![container(
+                                        scrollable(column))
+                                        .padding(10)]
                         },
                         Screen::Settings => {
                                 column![
@@ -200,19 +257,31 @@ impl ApplicationState {
 
         pub fn update(&mut self, message: Message) {
                 // First parts are updating the UI
+
+                // Execute commands associated to messages
                 match message {
                         Message::TabsPage => self.screen = Screen::Tabs,
                         Message::SearchPage => self.screen = Screen::Search,
                         Message::SettingsPage => self.screen = Screen::Settings,
 
                         Message::PlayingToggled(s) => self.playing = s,
-                        _ => (),
+                        Message::UpdateSearchBar(s) => self.search_value = s,
+                        Message::SearchTabs => self.search_tabs(),
+                        Message::ClearSearch => self.search_value = "".into(),
+                        Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
                 }
 
+                // Update dependent of UI location
                 match self.screen {
                         Screen::Settings => {
                                 self.theme = get_theme(&mut self.config);
                         },
+                        Screen::Search => {
+                                self.search_placeholder = match self.search_state {
+                                        SearchState::Searching => "Searching...".into(),
+                                        _ => "Search a tab...".into(),
+                                }
+                        }
                         _ => (),
                 }
 
@@ -230,27 +299,38 @@ impl ApplicationState {
                         };
                         if song_metadata.is_some() {
                                 let song_uid: String = match song_metadata.unwrap().track_id() {
-                                        Some(id) => id.to_string().replace("/com/spotify/track/", "")
-                                                .replace("/", "")
-                                                .replace(" ", ""),
+                                        Some(id) => {
+                                                if id.to_string().contains("spotify") {
+                                                        id.to_string().replace("/com/spotify/track/", "")
+                                                        .replace("/", "")
+                                                        .replace(" ", "")
+                                                } else {
+                                                        "unknown".into()
+                                                }   
+                                        }
                                         None => "unknown".into(),
                                 };
-                                if self.song_id_previoes_cycle != song_uid {
-                                        self.get_song_data_by_uid(&song_uid, true);
+                                if self.playing {
+                                        if self.song_id_previoes_cycle != song_uid {
+                                                self.get_song_data_by_uid(&song_uid, true);
+                                        }
+                                        if self.song_id_display != song_uid {
+                                                self.get_song_data_by_uid(&song_uid, false);
+                                        }
+                                        self.song_id_previoes_cycle = song_uid.clone();
                                 }
-                                if self.song_id_display != song_uid {
-                                        self.get_song_data_by_uid(&song_uid, false);
-                                }
-                                self.song_id_previoes_cycle = song_uid;
+                                self.current_song_uid = song_uid.into();
                         }
                 }
 
+                // Check if any thread returned a value
                 self.receivers.update(&mut self.received_queue);
                 if !self.received_queue.is_empty() {
                         for received_value in self.received_queue.to_owned() {
                                 match received_value {
                                         Value::Notification(n) => self.notifications.push(n),
-                                        _ => (), 
+                                        Value::SearchResults(s) => self.search_to_ui(s),
+                                        _ => println!("Received: {}", received_value), 
                                 }
                         }
                 }
@@ -266,8 +346,34 @@ impl ApplicationState {
                 self.notifications.push(content);
         }
 
+        /// Tell the update function to show search results
+        pub fn search_to_ui(&mut self, search_results: Vec<SearchResult>) {
+                self.search_state = SearchState::Finished(search_results)
+        }
+
+        pub fn search_tabs(&mut self) {
+                self.search_state = SearchState::Searching;
+                let search_query = self.search_value.clone();
+                let (tx, rx) = mpsc::channel::<Value>();
+                thread::spawn(move || match network::search(search_query.as_str()) {
+                        Ok(s) => {
+                                if let Err(e) = tx.send(Value::SearchResults(s)) {
+                                        if let Err(e) = tx.send(Value::Notification(
+                                                        NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
+                                                println!("Could not send message: {}", e);
+                                        }
+                                }
+                        },
+                        Err(e) => if let Err(e) = tx.send(Value::Notification(
+                                        NotificationType::Error("Something went wrong getting the search results: ".to_string() + &e))) {
+                                println!("Could not send message: {}", e);
+                        },
+                });
+                self.receivers.0.push(rx);
+        }
+
         /// Download and store a tab locally
-        pub fn spawn_get_tab_thread(url: String, song_uid: String, rec: &mut GlobalReceivers) {
+        pub fn spawn_get_tab_thread(&mut self, url: String, song_uid: String) {
                 let (tx, rx) = mpsc::channel::<Value>();
                 // A thread is spawned to prevent freezing UI
                 thread::spawn(move || match network::get_tab(&url) {
@@ -282,11 +388,12 @@ impl ApplicationState {
                                 println!("Could not send message: {}", e);
                         },
                 });
-                rec.0.push(rx);
+                self.receivers.0.push(rx);
         }
 
         /// Write a given Song's lines to UI 
-        pub fn song_to_ui(&self, song: Song) {
+        pub fn song_to_ui(&mut self, song: Song, song_uid: String) {
+                self.song_id_display = song_uid;
                 todo!("show the given tab to the user (project lines to UI)")
         }
 
@@ -300,11 +407,11 @@ impl ApplicationState {
 
                                 if p.is_file() {
                                         match load_song(&song_uid) {
-                                                Ok(s) => self.song_to_ui(s),
+                                                Ok(s) => self.song_to_ui(s, song_uid.to_owned()),
                                                 Err(e) => self.show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
                                         }
                                 } else if ask {
-                                        todo!("Ask user to download a tab (show search results)")
+                                        self.screen = Screen::Search;
                                 }
                         }
                         Err(e) => self.show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),

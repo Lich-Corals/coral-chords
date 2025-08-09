@@ -63,7 +63,6 @@ pub mod formats {
         use std::collections::HashMap;
         use iced::Theme;
         use crate::backend::system::{set_config};
-        use crate::ApplicationState;
 
         /// The subdirectory of the config path where tab files are stored.
         pub const TAB_DIR: &str = "tabs";
@@ -140,10 +139,12 @@ pub mod formats {
                                 match self.0[i].try_recv() {
                                         Ok(v) => queue.push(v),
                                         Err(e) => if let TryRecvError::Disconnected = e {
-                                                self.0.remove(i);
+                                                if self.0.len() > i {
+                                                        self.0.remove(i);
+                                                }
                                         },
                                 }
-                        }        
+                        }
                 }
         }
 
@@ -199,14 +200,25 @@ pub mod formats {
 
 /// Accessing UG
 pub mod network {
-        use ug_scraper::types::{Song};
+        use std::u8;
+
+        use serde::Serialize;
+        use ug_scraper::types::{SearchResult, Song};
         use ug_scraper::tab_scraper::get_song_data;
+        use ug_scraper::search_scraper::get_search_results;
 
         /// Get a tab
         /// 
         /// Designed to be used in parallel with the main process.
         pub fn get_tab(url: &str) -> Result<Song, String> {
                 match get_song_data(url, true) {
+                        Ok(s) => Ok(s),
+                        Err(e) => Err(e.to_string()),
+                }
+        }
+
+        pub fn search(query: &str) -> Result<Vec<SearchResult>, String>{
+                match get_search_results(query, 2) {
                         Ok(s) => Ok(s),
                         Err(e) => Err(e.to_string()),
                 }
