@@ -155,56 +155,84 @@ impl ApplicationState {
                                 Column::new()
                         }, 
                         Screen::Search => {
-                                let mut title_column = column![];
-                                let mut artist_column = column![];
-                                let mut rating_column = column![];
-                                let mut rating_count_column = column![];
-                                if let SearchState::Finished(s) = &self.search_state {
-                                        let mut sorted_results = s.clone();
-                                        sorted_results.sort_by_key(|s| s.rating_value as i32 * -1);
-                                        for search_result in sorted_results {
-                                                let title = search_result.basic_data.title.clone();
-                                                let artist = search_result.basic_data.artist.clone();
-                                                let url = search_result.basic_data.tab_link.clone();
-                                                let rating_count = search_result.rating_count;
-                                                let rating: String;
-                                                let rating_count_string: String;
-                                                if rating_count > 0 {
-                                                        rating = format!("{:.1$}/5", search_result.rating_value, 1);
-                                                        rating_count_string = format!("x{rating_count:?}");
-                                                } else {
-                                                        rating = "?".into();
-                                                        rating_count_string = "".into();
+                                match &self.search_state {
+                                        SearchState::Finished(s) => {
+                                                if s.len() == 1 {
+                                                        return column![text("No search results!").color(color!(0xe64553))].padding(10)
                                                 }
-                                                let row_height = 40;
-                                                title_column = title_column.push(row![
-                                                        button("Download")
-                                                                .on_press(Message::DownloadTab(url)),
-                                                        Space::new(10, 0),
-                                                        text(title),
-                                                        Space::new(30, 0),
-                                                ].height(row_height).align_y(Center));
-                                                artist_column = artist_column.push(row![
-                                                        text("by "),
-                                                        text(artist).color(color!(0xea76cb)),
-                                                        Space::new(30, 0),
-                                                ].height(row_height).align_y(Center));
-                                                rating_column = rating_column.push(row![
-                                                        text("Rating: "),
-                                                        text(rating).color(color!(0xdd7878)),
-                                                        Space::new(10, 0),
-                                                ].height(row_height).align_y(Center));
-                                                rating_count_column = rating_count_column.push(row![
-                                                        text(rating_count_string).color(color!(0xdd7878)),
-                                                ].height(row_height).align_y(Center));
-                                        }
+                                                let mut title_column = column![];
+                                                let mut artist_column = column![];
+                                                let mut rating_column = column![];
+                                                let mut rating_count_column = column![];
+
+                                                let sorted_results = s.clone();
+                                                let mut results: Vec<Vec<SearchResult>> = vec![vec![]];
+                                                let mut previous_artist: String = String::new();
+                                                let mut artist_vec: Vec<SearchResult> = vec![];
+                                                for result in sorted_results {
+                                                        if result.basic_data.artist == previous_artist {
+                                                                previous_artist = result.basic_data.artist.clone();
+                                                                artist_vec.push(result);
+                                                        } else {
+                                                                results.push(artist_vec.clone());
+                                                                artist_vec = vec![];
+                                                                previous_artist = result.basic_data.artist.clone();
+                                                                artist_vec.push(result);
+                                                        }
+                                                }
+                                                results.push(artist_vec.clone());
+                                                let mut sorted_results: Vec<SearchResult> = vec![];
+                                                for mut artist_vec in results {
+                                                        artist_vec.sort_by_key(|s| (s.rating_value * -100.0) as i32);
+                                                        sorted_results.append(&mut artist_vec);
+                                                }
+                                                for search_result in sorted_results {
+                                                        let title = search_result.basic_data.title.clone();
+                                                        let artist = search_result.basic_data.artist.clone();
+                                                        let url = search_result.basic_data.tab_link.clone();
+                                                        let rating_count = search_result.rating_count;
+                                                        let rating: String;
+                                                        let rating_count_string: String;
+                                                        if rating_count > 0 {
+                                                                rating = format!("{:.1$}/5", search_result.rating_value, 1);
+                                                                rating_count_string = format!("x{rating_count:?}");
+                                                        } else {
+                                                                rating = "?".into();
+                                                                rating_count_string = "".into();
+                                                        }
+                                                        let row_height = 40;
+                                                        title_column = title_column.push(row![
+                                                                button("Download")
+                                                                        .on_press(Message::DownloadTab(url)),
+                                                                Space::new(10, 0),
+                                                                text(title),
+                                                                Space::new(30, 0),
+                                                        ].height(row_height).align_y(Center));
+                                                        artist_column = artist_column.push(row![
+                                                                text("by "),
+                                                                text(artist).color(color!(0xea76cb)),
+                                                                Space::new(30, 0),
+                                                        ].height(row_height).align_y(Center));
+                                                        rating_column = rating_column.push(row![
+                                                                text("Rating: "),
+                                                                text(rating).color(color!(0xdd7878)),
+                                                                Space::new(10, 0),
+                                                        ].height(row_height).align_y(Center));
+                                                        rating_count_column = rating_count_column.push(row![
+                                                                text(rating_count_string).color(color!(0xdd7878)),
+                                                        ].height(row_height).align_y(Center));
+                                                }
+                                                column![container(
+                                                        scrollable(row![
+                                                                title_column, artist_column, rating_column, rating_count_column,
+                                                        ])
+                                                        .spacing(10))
+                                                        .padding(10)]
+                                                },
+                                        SearchState::Searching => column![text("Searching...")].padding(10),
+                                        _ => Column::new()
                                 }
-                                column![container(
-                                        scrollable(row![
-                                                title_column, artist_column, rating_column, rating_count_column,
-                                        ])
-                                        .spacing(10))
-                                        .padding(10)]
+                                
                         },
                         Screen::Settings => {
                                 column![
