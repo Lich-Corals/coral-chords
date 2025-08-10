@@ -21,7 +21,7 @@ use iced::Alignment::Center;
 use iced::{Subscription, Theme};
 use iced::time::{self, Duration};
 use iced::color;
-use iced::widget::{button, column, combo_box, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
+use iced::widget::{button, column, combo_box, container, row, scrollable, slider, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
@@ -60,6 +60,8 @@ struct ApplicationState {
         search_value: String,
         /// The current search status
         search_state: SearchState,   
+        /// The search depth to use
+        search_depth: u8,
         /// The UID of the currently running song
         current_song_uid: String,
         /// Selectable themes
@@ -94,11 +96,13 @@ impl Default for ApplicationState {
                 };
 
                 let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
+                let search_depth = if let Value::Int(o) = config_result.0.get("search_depth"){o}else{2};
 
                 ApplicationState { 
                         screen: Screen::default(), 
                         theme: get_selected_theme(&mut config_result.0), 
                         selected_theme: Some(get_selected_theme(&mut config_result.0)),
+                        search_depth: search_depth as u8,
                         config: config_result.0,
                         channel: mpsc::channel::<Value>(),
                         playing: false,
@@ -143,6 +147,8 @@ enum Message {
         ResetFilter,
         /// Apply a theme
         ApplyTheme(Theme),
+        /// Apply search depth
+        ApplySearchDepth(u8),
 }
 
 #[derive(Default)]
@@ -287,9 +293,16 @@ impl ApplicationState {
                                                 Space::new(10, 0),
                                                 combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
                                                         .width(300),
+                                        ].align_y(Center),
+                                        row![
+                                                text(format!("Search depth: {:02}", self.search_depth)),
+                                                Space::new(10, 0),
+                                                slider(2..=64, self.search_depth, Message::ApplySearchDepth)
+                                                        .width(300),
                                         ].align_y(Center)
                                         
                                 ].padding(10)
+                                .spacing(20)
                         }
                 };
 
@@ -408,7 +421,11 @@ impl ApplicationState {
                                 let _ = self.config.set("theme", Value::String(t.to_string()));
                                 self.selected_theme = Some(t.clone());
                                 self.theme = t;
-                        }
+                        },
+                        Message::ApplySearchDepth(d) => {
+                                self.search_depth = d;
+                                let _ = self.config.set("search_depth", Value::Int(d as i64));
+                        },
                         _ => (),
                 }
 
