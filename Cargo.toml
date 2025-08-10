@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 mpris = "2.0.1"
+opener = "0.8.2"
 ug-scraper = "0.2.1"
 
 [dependencies.confy]

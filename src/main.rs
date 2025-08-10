@@ -25,7 +25,7 @@ use iced::widget::{button, checkbox, column, combo_box, container, rich_text, ro
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
-use ug_scraper::types::{DataSetType, DataType, Line, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
+use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR};
@@ -74,8 +74,6 @@ struct ApplicationState {
         size: Size,
         /// The height of the head bar
         bar_height: f32,
-        /// The maximum amont of columns to show a tab on
-        max_tab_columns: u8,
         /// Wether un-downloadable search results are disabled
         only_downloadable_results: bool,
         /// The currently displayed tab
@@ -88,6 +86,12 @@ struct ApplicationState {
         chord_colour_text: String,
         // The padding of the main window contents
         main_padding: f32,
+        // Wether the lines before the first chords will be removed
+        remove_first_lines: bool,
+        // Wether emyty lines will be removed from tabs
+        remove_empty_lines: bool,
+        // Path to the current tab file
+        current_path: String,
 }
 
 impl Default for ApplicationState {
@@ -115,8 +119,9 @@ impl Default for ApplicationState {
 
                 let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
                 let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
-                let max_tab_columns = if let Value::Int(v) = config_result.0.get("max_tab_columns"){v}else{3};
                 let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
+                let remove_first_lines = if let Value::Bool(v) = config_result.0.get("remove_first_lines"){v}else{false};
+                let remove_empty_lines = if let Value::Bool(v) = config_result.0.get("remove_empty_lines"){v}else{false};
                 let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{15};
                 let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour"){v}else{"#fe640b".into()};
                 let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
@@ -141,13 +146,15 @@ impl Default for ApplicationState {
                         search_filter: search_filter,
                         size: Size::default(),
                         bar_height: 0.0,
-                        max_tab_columns: max_tab_columns as u8,
                         only_downloadable_results: only_downloadable_results,
                         current_tab: Song::default(),
                         tab_text_size: tab_text_size as u8,
                         chord_colour: chord_colour,
                         chord_colour_text: loaded_colour,
                         main_padding: 10.0,
+                        remove_empty_lines: remove_empty_lines,
+                        remove_first_lines: remove_first_lines,
+                        current_path: String::new(),
                 }
         }
 }
@@ -183,17 +190,21 @@ enum Message {
         ApplySearchDepth(u8),
         /// An iced event occured
         EventOccurred(Event),
-        /// Maximum amont of tab columns has changed
-        ApplyTabColumns(u8),
         /// en-/disable un-downloadable results
         SetDownloadableOnly(bool),
         /// Set the height of tab lines
         SetTabLineHeight(u8),
         /// Chord colour input
         ChordColourChange(String),
+        /// Remove-first-lines toggled
+        RemoveFirstLines(bool),
+        /// Remove-empty-lines toggled
+        RemoveEmptyLines(bool),
+        /// Open the current tab file
+        OpenTabFile,
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 enum Screen {
         #[default]
         Tabs,
@@ -222,16 +233,40 @@ impl ApplicationState {
                         Screen::Tabs => {
                                 if self.current_tab.lines.len() != 0 {
                                         let mut main_row: Row<'_, Message> = row![];
-
-                                        let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
-                                        println!("{}", self.size.height);
                                         let mut new_column = column![];
-                                        let mut lines_on_column = 0;
+                                        if let Some(d) = &self.current_tab.metadata {
+                                                if let Some(d) = &d.capo {
+                                                        new_column = new_column.push(row![
+                                                                text(format!("Capo: {}", d.clone()))
+                                                                        .font(Font::MONOSPACE)
+                                                                        .size(self.tab_text_size as f32)
+                                                        ].height(self.tab_text_size as f32));
+                                                }
+                                                if let Some(d) = &d.tuning {
+                                                        new_column = new_column.push(row![
+                                                                text(format!("Tuning: {}", d.clone()))
+                                                                        .font(Font::MONOSPACE)
+                                                                        .size(self.tab_text_size as f32)
+                                                        ].height(self.tab_text_size as f32));
+                                                }
+                                                new_column = new_column.push(row![
+                                                        text(" ")
+                                                                .font(Font::MONOSPACE)
+                                                                .size(self.tab_text_size as f32)
+                                                ].height(self.tab_text_size as f32));
+                                        }
+                                                
+                                        let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
+                                        let mut lines_on_column = 3;
+                                        let mut first_chords_found = false;
                                         for line in &self.current_tab.lines {
-                                                if lines_on_column < max_lines_per_column as u16 {
+                                                if line.line_type != DataType::Lyric {
+                                                        first_chords_found = true;
+                                                }
+                                                if !self.remove_first_lines || first_chords_found {
+                                                        lines_on_column += 1;
                                                         match line.line_type {
                                                                 DataType::Chord => {
-                                                                        lines_on_column += 1;
                                                                         new_column = new_column.push(row![
                                                                                 text(line.text_data.clone())
                                                                                         .color(self.chord_colour)
@@ -240,29 +275,32 @@ impl ApplicationState {
                                                                         ].height(self.tab_text_size as f32));
                                                                 },
                                                                 DataType::Lyric => {
-                                                                        lines_on_column += 1;
-                                                                        new_column = new_column.push(row![
-                                                                                text(line.text_data.clone())
-                                                                                        .font(Font::MONOSPACE)
-                                                                                        .size(self.tab_text_size as f32)
-                                                                        ].height(self.tab_text_size as f32));
+                                                                        if !self.remove_empty_lines || line.text_data.len() > 0 {
+                                                                                new_column = new_column.push(row![
+                                                                                        text(line.text_data.clone())
+                                                                                                .font(Font::MONOSPACE)
+                                                                                                .size(self.tab_text_size as f32)
+                                                                                ].height(self.tab_text_size as f32));
+                                                                        }
                                                                 }, 
                                                                 DataType::SectionTitle => {
-                                                                        /*
                                                                         new_column = new_column.push(row![
                                                                                 rich_text([span(
                                                                                         line.text_data.clone())
                                                                                                 .font(Font {
                                                                                                         style: font::Style::Italic,
-                                                                                                        ..Font::MONOSPACE }),
+                                                                                                        ..Font::MONOSPACE })
+                                                                                                .size(self.tab_text_size as f32),
                                                                                 ])
-                                                                        ]);*/
+                                                                        ].height(self.tab_text_size as f32));
                                                                 }
                                                         }
-                                                } else {
-                                                        lines_on_column = 0;
-                                                        main_row = main_row.push(new_column);
-                                                        new_column = column![];
+                                                        if !(lines_on_column < max_lines_per_column as u16) 
+                                                                && line.line_type == DataType::Lyric {
+                                                                lines_on_column = 0;
+                                                                main_row = main_row.push(new_column);
+                                                                new_column = column![];
+                                                        }
                                                 }
                                         }
                                         main_row = main_row.push(new_column);
@@ -402,23 +440,25 @@ impl ApplicationState {
                                                         .width(300),
                                         ].align_y(Center),
                                         row![
-                                                text(format!("Max tab columns: {}", self.max_tab_columns)),
-                                                Space::new(10, 0),
-                                                slider(1..=9, self.max_tab_columns, Message::ApplyTabColumns)
-                                                        .width(300),
-                                        ].align_y(Center),
-                                        row![
                                         text(format!("Tab text size: {:02}", self.tab_text_size)),
                                         Space::new(10, 0),
                                         slider(5..=99, self.tab_text_size, Message::SetTabLineHeight)
                                                 .width(300),
                                         ].align_y(Center),
                                         row![
-                                                text("Select a chord colour:"),
+                                                text("Chord colour:"),
                                                 Space::new(10, 0),
                                                 text_input("e.g. #fe640b", &self.chord_colour_text)
                                                         .on_input(Message::ChordColourChange)
                                                         .width(300),
+                                        ].align_y(Center),
+                                        row![
+                                                checkbox("Remove first lines before chords", self.remove_first_lines)
+                                                        .on_toggle(Message::RemoveFirstLines),
+                                        ].align_y(Center),
+                                        row![
+                                                checkbox("Remove empty lines", self.remove_empty_lines)
+                                                        .on_toggle(Message::RemoveEmptyLines),
                                         ].align_y(Center),
                                         column![
                                                 Space::new(0, 20),
@@ -453,6 +493,9 @@ impl ApplicationState {
                                                 .on_press(Message::SettingsPage)
                                                 .style(button::secondary),
                                         Space::new(100, 0),
+                                        bar_button("Edit...")
+                                                .on_press(Message::OpenTabFile),
+                                        Space::new(10, 0),
                                         toggler(self.playing)
                                                 .label("Play")
                                                 .on_toggle(Message::PlayingToggled)
@@ -524,66 +567,6 @@ impl ApplicationState {
         pub fn update(&mut self, message: Message) {
                 // First parts are updating the UI
 
-                // Execute commands associated to messages
-                match message {
-                        Message::TabsPage => self.screen = Screen::Tabs,
-                        Message::SearchPage => self.screen = Screen::Search,
-                        Message::SettingsPage => self.screen = Screen::Settings,
-
-                        Message::PlayingToggled(s) => self.playing = s,
-                        Message::UpdateSearchBar(s) => self.search_value = s,
-                        Message::SearchTabs => self.search_tabs(),
-                        Message::ClearSearch => self.search_value = "".into(),
-                        Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
-                        Message::ApplySearch(f) => {
-                                self.search_filter = Some(f);
-                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(Some(f)));
-                        },
-                        Message::ResetFilter => {
-                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(None));
-                                self.search_filter = None;
-                        },
-                        Message::ApplyTheme(t) => {
-                                let _ = self.config.set("theme", Value::String(t.to_string()));
-                                self.selected_theme = Some(t.clone());
-                                self.theme = t;
-                        },
-                        Message::ApplySearchDepth(d) => {
-                                self.search_depth = d;
-                                let _ = self.config.set("search_depth", Value::Int(d as i64));
-                        },
-                        Message::ApplyTabColumns(c) => {
-                                self.max_tab_columns = c;
-                                let _ = self.config.set("max_tab_columns", Value::Int(c as i64));
-                        },
-                        Message::SetTabLineHeight(h) => {
-                                self.tab_text_size = h;
-                                let _ = self.config.set("tab_text_size", Value::Int(h as i64));
-                        }
-                        Message::SetDownloadableOnly(s) => {
-                                self.only_downloadable_results = s;
-                                let _ = self.config.set("only_downloadable_results", Value::Bool(s));
-                        },
-                        Message::ChordColourChange(c) => {
-                                let colour = Color::parse(&c).unwrap_or(Color::parse("#fe640b").unwrap());
-                                let _ = self.config.set("chord_colour", Value::String(c.clone()));
-                                self.chord_colour = colour;
-                                self.chord_colour_text = c;
-                        }
-                        Message::EventOccurred(e) => match e {
-                                Event::Window(window::Event::Opened { position: _, size: s }) => {
-                                        self.size = s;
-                                        self.bar_height = self.size.height / 20.0;
-                                },
-                                Event::Window(window::Event::Resized(s)) => {
-                                        self.size = s;
-                                        self.bar_height = self.size.height / 20.0;
-                                },
-                                _ => (),
-                        },
-                        _ => (),
-                }
-
                 // Update dependent of UI location
                 match self.screen {
                         Screen::Settings => {
@@ -631,12 +614,12 @@ impl ApplicationState {
                                                         format!("{} {}", song_name, song_artist),
                                                         true);
                                         }
-                                        if self.song_id_display != song_uid {
-                                                self.get_song_data_by_uid(&song_uid,
-                                                        format!("{} {}", song_name, song_artist),
-                                                        false);
-                                        }
                                         self.song_id_previoes_cycle = song_uid.clone();
+                                }
+                                if self.song_id_display != song_uid {
+                                        self.get_song_data_by_uid(&song_uid,
+                                                format!("{} {}", song_name, song_artist),
+                                                false);
                                 }
                                 self.current_song_uid = song_uid.into();
                         }
@@ -650,6 +633,75 @@ impl ApplicationState {
                                 _ => (),
                         }
                 } 
+
+                // Execute commands associated to messages
+                match message {
+                        Message::TabsPage => self.screen = Screen::Tabs,
+                        Message::SearchPage => self.screen = Screen::Search,
+                        Message::SettingsPage => self.screen = Screen::Settings,
+
+                        Message::PlayingToggled(s) => self.playing = s,
+                        Message::UpdateSearchBar(s) => self.search_value = s,
+                        Message::SearchTabs => self.search_tabs(),
+                        Message::ClearSearch => self.search_value = "".into(),
+                        Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
+                        Message::ApplySearch(f) => {
+                                self.search_filter = Some(f);
+                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(Some(f)));
+                        },
+                        Message::ResetFilter => {
+                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(None));
+                                self.search_filter = None;
+                        },
+                        Message::ApplyTheme(t) => {
+                                let _ = self.config.set("theme", Value::String(t.to_string()));
+                                self.selected_theme = Some(t.clone());
+                                self.theme = t;
+                        },
+                        Message::ApplySearchDepth(d) => {
+                                self.search_depth = d;
+                                let _ = self.config.set("search_depth", Value::Int(d as i64));
+                        },
+                        Message::SetTabLineHeight(h) => {
+                                self.tab_text_size = h;
+                                let _ = self.config.set("tab_text_size", Value::Int(h as i64));
+                        }
+                        Message::SetDownloadableOnly(s) => {
+                                self.only_downloadable_results = s;
+                                let _ = self.config.set("only_downloadable_results", Value::Bool(s));
+                        },
+                        Message::RemoveEmptyLines(s) => {
+                                self.remove_empty_lines = s;
+                                let _ = self.config.set("remove_empty_lines", Value::Bool(s));
+                        },
+                        Message::RemoveFirstLines(s) => {
+                                self.remove_first_lines = s;
+                                let _ = self.config.set("remove_first_lines", Value::Bool(s));
+                        },
+                        Message::ChordColourChange(c) => {
+                                let colour = Color::parse(&c).unwrap_or(Color::parse("#fe640b").unwrap());
+                                let _ = self.config.set("chord_colour", Value::String(c.clone()));
+                                self.chord_colour = colour;
+                                self.chord_colour_text = c;
+                        },
+                        Message::OpenTabFile => {
+                                if let Err(e) = opener::open(std::path::Path::new(&self.current_path)) {
+                                        self.show_info(NotificationType::Error(format!("Could not open file: {}", e.to_string())));
+                                }
+                        },
+                        Message::EventOccurred(e) => match e {
+                                Event::Window(window::Event::Opened { position: _, size: s }) => {
+                                        self.size = s;
+                                        self.bar_height = self.size.height / 20.0;
+                                },
+                                Event::Window(window::Event::Resized(s)) => {
+                                        self.size = s;
+                                        self.bar_height = self.size.height / 20.0;
+                                },
+                                _ => (),
+                        },
+                        _ => (),
+                }
         }
 
         /// Show info to the user
@@ -719,15 +771,19 @@ impl ApplicationState {
                                 p.push(TAB_DIR);
                                 p.push(song_uid.clone() + ".yml");
 
-                                if p.is_file() {
-                                        match load_song(&song_uid) {
-                                                Ok(s) => self.song_to_ui(s, song_uid.to_owned()),
-                                                Err(e) => self.show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
+                                self.current_path = p.to_str().unwrap().to_owned();
+
+                                if self.playing {
+                                        if p.is_file() {
+                                                match load_song(&song_uid) {
+                                                        Ok(s) => self.song_to_ui(s, song_uid.to_owned()),
+                                                        Err(e) => self.show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
+                                                }
+                                        } else if ask {
+                                                self.screen = Screen::Search;
+                                                self.search_value = search_query;
+                                                self.search_tabs();
                                         }
-                                } else if ask {
-                                        self.screen = Screen::Search;
-                                        self.search_value = search_query;
-                                        self.search_tabs();
                                 }
                         }
                         Err(e) => self.show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),

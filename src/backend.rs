@@ -123,10 +123,11 @@ pub mod formats {
                                         ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
                                         ("search_depth".into(), Value::Int(2)),
                                         ("search_filter".into(), Value::DataSetTypeOption(None)),
-                                        ("max_tab_columns".into(), Value::Int(3)),
                                         ("only_downloadable_results".into(), Value::Bool(false)),
                                         ("tab_text_size".into(), Value::Int(15)),
                                         ("chord_colour".into(), Value::String("#fe640b".into())),
+                                        ("remove_empty_lines".into(), Value::Bool(false)),
+                                        ("remove_first_lines".into(), Value::Bool(true)),
                                 ])
                         }
                 }
