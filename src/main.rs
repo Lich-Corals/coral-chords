@@ -22,6 +22,7 @@ use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
 use iced::time::{self, Duration};
 use iced::{color, window};
 use iced::widget::{button, checkbox, column, combo_box, container, rich_text, row, scrollable, slider, span, text, text_input, toggler, Column, Row, Space};
+use std::process::exit;
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
@@ -117,6 +118,11 @@ impl Default for ApplicationState {
                         },
                 };
 
+                notifications.push(NotificationType::Info("INFO".into()));
+                notifications.push(NotificationType::Warning("WARNING".into()));
+                notifications.push(NotificationType::Error("ERROR".into()));
+                notifications.push(NotificationType::Fatal("FATAL".into()));
+
                 let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
                 let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
                 let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
@@ -202,6 +208,10 @@ enum Message {
         RemoveEmptyLines(bool),
         /// Open the current tab file
         OpenTabFile,
+        /// Clear all notifications
+        ClearNotifications,
+        /// Close the application
+        CloseApp,
 }
 
 #[derive(Default, PartialEq)]
@@ -556,12 +566,51 @@ impl ApplicationState {
                 .spacing(2)
                 .height(self.bar_height);
 
-                // A bar sitting at the bottom of the window to show messages to the user
-                let message_bar: Row<Message> = row![
+                // A bar to show messages to the user
+                let mut notifications: Column<'_, Message> = column![];
+                for notification in self.notifications.clone() {
+                        match notification {
+                                NotificationType::Info(n) => {
+                                        notifications = notifications.push(row![
+                                                text(n),
+                                        ])
+                                },
+                                NotificationType::Warning(n) => {
+                                        notifications = notifications.push(row![
+                                                text(n).color(color![0xdf8e1d]),
+                                        ])
+                                },
+                                NotificationType::Error(n) => {
+                                        notifications = notifications.push(row![
+                                                text(n).color(color![0xfe640b]),
+                                        ])
+                                },
+                                NotificationType::Fatal(n) => {
+                                        notifications = notifications.push(row![
+                                                text(n).color(color![0xe64553]),
+                                                Space::new(10, 0),
+                                                button("Close")
+                                                        .on_press(Message::CloseApp),
+                                        ].align_y(Center))
+                                },
+                                _ => (),
+                        };
+                }
+                let message_bar: Row<Message>;
+                if self.notifications.len() != 0 {
+                        message_bar = row![
+                                button("Clear")
+                                        .on_press(Message::ClearNotifications),
+                                Space::new(10, 0),
+                                notifications,
+                        ].padding(self.main_padding)
+                        .align_y(Center);
+                } else {
+                        message_bar = row![];
+                }
+                
 
-                ];
-
-                column![controls, contents, message_bar]
+                column![controls, message_bar, contents]
 
         }
 
@@ -656,6 +705,8 @@ impl ApplicationState {
                         Message::UpdateSearchBar(s) => self.search_value = s,
                         Message::SearchTabs => self.search_tabs(),
                         Message::ClearSearch => self.search_value = "".into(),
+                        Message::ClearNotifications => self.notifications = vec![],
+                        Message::CloseApp => exit(1),
                         Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
                         Message::ApplySearch(f) => {
                                 self.search_filter = Some(f);
