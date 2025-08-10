@@ -423,53 +423,65 @@ impl ApplicationState {
                         },
                         Screen::Settings => {
                                 column![
-                                        row![
-                                                text("Theme"),
-                                                Space::new(10, 0),
-                                                combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
-                                                        .width(300),
-                                        ].align_y(Center),
-                                        row![
-                                                checkbox("Only show downloadable search results", self.only_downloadable_results)
-                                                        .on_toggle(Message::SetDownloadableOnly),
-                                        ].align_y(Center),
-                                        row![
-                                                text(format!("Search depth: {:02}", self.search_depth)),
-                                                Space::new(10, 0),
-                                                slider(2..=64, self.search_depth, Message::ApplySearchDepth)
-                                                        .width(300),
-                                        ].align_y(Center),
-                                        row![
-                                        text(format!("Tab text size: {:02}", self.tab_text_size)),
-                                        Space::new(10, 0),
-                                        slider(5..=99, self.tab_text_size, Message::SetTabLineHeight)
-                                                .width(300),
-                                        ].align_y(Center),
-                                        row![
-                                                text("Chord colour:"),
-                                                Space::new(10, 0),
-                                                text_input("e.g. #fe640b", &self.chord_colour_text)
-                                                        .on_input(Message::ChordColourChange)
-                                                        .width(300),
-                                        ].align_y(Center),
-                                        row![
-                                                checkbox("Remove first lines before chords", self.remove_first_lines)
-                                                        .on_toggle(Message::RemoveFirstLines),
-                                        ].align_y(Center),
-                                        row![
-                                                checkbox("Remove empty lines", self.remove_empty_lines)
-                                                        .on_toggle(Message::RemoveEmptyLines),
-                                        ].align_y(Center),
                                         column![
-                                                Space::new(0, 20),
-                                                text("Text will look like this.".to_string())
-                                                        .size(self.tab_text_size as f32)
-                                                        .font(Font::MONOSPACE),
-                                                text("Chords will look like this.".to_string())
-                                                        .size(self.tab_text_size as f32)
-                                                        .font(Font::MONOSPACE)
-                                                        .color(self.chord_colour),
-                                        ]
+                                                text("Application")
+                                                        .size(25),
+                                                row![
+                                                        text("Theme"),
+                                                        Space::new(10, 0),
+                                                        combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                        ].spacing(20),
+                                        column![
+                                                text("Search")
+                                                        .size(25),
+                                                row![
+                                                        checkbox("Only show downloadable search results", self.only_downloadable_results)
+                                                                .on_toggle(Message::SetDownloadableOnly),
+                                                ].align_y(Center),
+                                                row![
+                                                        text(format!("Search depth: {:02}", self.search_depth)),
+                                                        Space::new(10, 0),
+                                                        slider(2..=64, self.search_depth, Message::ApplySearchDepth)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                        ].spacing(20),
+                                        column![
+                                                text("Tabs")
+                                                        .size(25),
+                                                row![
+                                                        checkbox("Remove lines before first chords", self.remove_first_lines)
+                                                                .on_toggle(Message::RemoveFirstLines),
+                                                ].align_y(Center),
+                                                row![
+                                                        checkbox("Remove empty lines", self.remove_empty_lines)
+                                                                .on_toggle(Message::RemoveEmptyLines),
+                                                ].align_y(Center),
+                                                row![
+                                                        text(format!("Text size: {:02}", self.tab_text_size)),
+                                                        Space::new(10, 0),
+                                                        slider(5..=99, self.tab_text_size, Message::SetTabLineHeight)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                                row![
+                                                        text("Chord colour:"),
+                                                        Space::new(10, 0),
+                                                        text_input("#fe640b", &self.chord_colour_text)
+                                                                .on_input(Message::ChordColourChange)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                                column![
+                                                        Space::new(0, 20),
+                                                        text("Text will look like this.".to_string())
+                                                                .size(self.tab_text_size as f32)
+                                                                .font(Font::MONOSPACE),
+                                                        text("Chords will look like this.".to_string())
+                                                                .size(self.tab_text_size as f32)
+                                                                .font(Font::MONOSPACE)
+                                                                .color(self.chord_colour),
+                                                ],
+                                        ].spacing(20),
                                 ].padding(10)
                                 .spacing(20)
                         }
