@@ -28,7 +28,7 @@ use std::vec;
 use ug_scraper::types::{DataSetType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 use mpris::{Metadata, PlayerFinder, Player};
 
-use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR, get_theme};
+use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
 
@@ -36,6 +36,8 @@ use crate::backend::system::{get_config, load_song, store_song};
 struct ApplicationState {
         screen: Screen,
         theme: Theme,
+        /// The theme selected from the dropdown
+        selected_theme: Option<Theme>,
         /// The globally used config object
         config: CoralConfig,
         /// The channel to communicate with other threads
@@ -95,7 +97,8 @@ impl Default for ApplicationState {
 
                 ApplicationState { 
                         screen: Screen::default(), 
-                        theme: get_theme(&mut config_result.0), 
+                        theme: get_selected_theme(&mut config_result.0), 
+                        selected_theme: Some(get_selected_theme(&mut config_result.0)),
                         config: config_result.0,
                         channel: mpsc::channel::<Value>(),
                         playing: false,
@@ -138,6 +141,8 @@ enum Message {
         ApplySearch(DataSetType),
         /// Reset the search filter
         ResetFilter,
+        /// Apply a theme
+        ApplyTheme(Theme),
 }
 
 #[derive(Default)]
@@ -277,8 +282,14 @@ impl ApplicationState {
                         },
                         Screen::Settings => {
                                 column![
-
-                                ]
+                                        row![
+                                                text("Theme"),
+                                                Space::new(10, 0),
+                                                combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
+                                                        .width(300),
+                                        ].align_y(Center)
+                                        
+                                ].padding(10)
                         }
                 };
 
@@ -348,6 +359,7 @@ impl ApplicationState {
                                         button("Settings")
                                                 .on_press(Message::SettingsPage)
                                                 .padding(button_padding),
+                                        Space::new(100, 0),
                                 ]
                         },
                 };
@@ -392,13 +404,18 @@ impl ApplicationState {
                                 let _ = self.config.set("search_filter", Value::DataSetTypeOption(None));
                                 self.search_filter = None;
                         },
+                        Message::ApplyTheme(t) => {
+                                let _ = self.config.set("theme", Value::String(t.to_string()));
+                                self.selected_theme = Some(t.clone());
+                                self.theme = t;
+                        }
                         _ => (),
                 }
 
                 // Update dependent of UI location
                 match self.screen {
                         Screen::Settings => {
-                                self.theme = get_theme(&mut self.config);
+                                self.theme = get_selected_theme(&mut self.config);
                         },
                         _ => (),
                 }
@@ -416,7 +433,7 @@ impl ApplicationState {
                                 }
                         };
                         if song_metadata.is_some() {
-                                let song_uid: String = match song_metadata.unwrap().track_id() {
+                                let song_uid: String = match song_metadata.clone().unwrap().track_id() {
                                         Some(id) => {
                                                 if id.to_string().contains("spotify") {
                                                         id.to_string().replace("/com/spotify/track/", "")
@@ -424,16 +441,28 @@ impl ApplicationState {
                                                         .replace(" ", "")
                                                 } else {
                                                         "unknown".into()
-                                                }   
+                                                }
                                         }
                                         None => "unknown".into(),
                                 };
+                                let song_name: String = match &song_metadata.clone().unwrap().title() {
+                                        Some(t) => t.to_string(),
+                                        None => "unknown".into()
+                                };
+                                let song_artist: String = match &song_metadata.unwrap().artists() {
+                                        Some(a) => a[0].into(),
+                                        None => "unknown".into()
+                                };
                                 if self.playing {
                                         if self.song_id_previoes_cycle != song_uid {
-                                                self.get_song_data_by_uid(&song_uid, true);
+                                                self.get_song_data_by_uid(&song_uid, 
+                                                        format!("{} {}", song_name, song_artist),
+                                                        true);
                                         }
                                         if self.song_id_display != song_uid {
-                                                self.get_song_data_by_uid(&song_uid, false);
+                                                self.get_song_data_by_uid(&song_uid,
+                                                        format!("{} {}", song_name, song_artist),
+                                                        false);
                                         }
                                         self.song_id_previoes_cycle = song_uid.clone();
                                 }
@@ -510,7 +539,7 @@ impl ApplicationState {
         }
 
         /// Load song data or ask for download
-        pub fn get_song_data_by_uid(&mut self, song_uid: &String, ask: bool) {
+        pub fn get_song_data_by_uid(&mut self, song_uid: &String, search_query: String, ask: bool) {
                 match system::get_tab_path() {
                         Ok(mut p) => {
                                 p.pop();
@@ -524,6 +553,7 @@ impl ApplicationState {
                                         }
                                 } else if ask {
                                         self.screen = Screen::Search;
+                                        self.search_value = search_query;
                                 }
                         }
                         Err(e) => self.show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),
@@ -545,6 +575,16 @@ fn get_config_object() -> (CoralConfig, Option<NotificationType>) {
                 }
         }
         (config.0, message)
+}
+
+fn get_selected_theme(config_object: &mut CoralConfig) -> Theme {
+        let selected = if let Value::String(t) = config_object.get("theme"){t}else{"".into()};
+        for theme in Theme::ALL {
+                if selected.contains(theme.to_string().as_str()) {
+                        return theme.to_owned()
+                }
+        }
+        Theme::CatppuccinMocha
 }
 
 fn main() {

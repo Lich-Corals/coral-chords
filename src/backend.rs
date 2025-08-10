@@ -60,7 +60,6 @@ pub mod formats {
         use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
-        use iced::Theme;
         use crate::backend::system::{set_config};
 
         /// The subdirectory of the config path where tab files are stored.
@@ -86,24 +85,6 @@ pub mod formats {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     write!(f, "{}", self)
                 }
-        }
-
-        /// Function to get the currently configured theme
-        pub fn get_theme(global_settings: &mut CoralConfig) -> Theme {
-                match global_settings.get("theme") {
-                        Value::String(t) => match t.as_str() {
-                                "Light" => Theme::Light,
-                                "Dark" => Theme::Dark,
-                                "Dracula" => Theme::Dracula,
-                                "CatppuccinMocha" => Theme::CatppuccinMocha,
-                                "CatppuccinLatte" => Theme::CatppuccinLatte,
-                                "SolarizedLight" => Theme::SolarizedLight,
-                                "SolarizedDark" => Theme::SolarizedDark,
-                                _ => Theme::CatppuccinMocha,
-                        },
-                        _ => Theme::CatppuccinMocha,
-                }
-
         }
 
         /// A wrapper to store different kinds of data in a single HashMap
