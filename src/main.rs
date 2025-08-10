@@ -18,7 +18,7 @@ mod backend;
 
 use confy::ConfyError;
 use iced::Alignment::Center;
-use iced::{event, Event, Size, Subscription, Theme};
+use iced::{event, Color, Event, Font, Size, Subscription, Theme};
 use iced::time::{self, Duration};
 use iced::{color, window};
 use iced::widget::{button, checkbox, column, combo_box, container, row, scrollable, slider, text, text_input, toggler, Column, Row, Space};
@@ -78,6 +78,14 @@ struct ApplicationState {
         max_tab_columns: u8,
         /// Wether un-downloadable search results are disabled
         only_downloadable_results: bool,
+        /// The currently displayed tab
+        current_tab: Song,
+        /// The configured size of a line of a tab
+        tab_text_size: u8,
+        /// The configured chord colour
+        chord_colour: Color,
+        // The value inside the chord colour input box
+        chord_colour_text: String,
 }
 
 impl Default for ApplicationState {
@@ -107,6 +115,9 @@ impl Default for ApplicationState {
                 let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
                 let max_tab_columns = if let Value::Int(v) = config_result.0.get("max_tab_columns"){v}else{3};
                 let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
+                let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{18};
+                let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour"){v}else{"#fe640b".into()};
+                let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
 
                 ApplicationState { 
                         screen: Screen::default(), 
@@ -130,6 +141,10 @@ impl Default for ApplicationState {
                         bar_height: 0.0,
                         max_tab_columns: max_tab_columns as u8,
                         only_downloadable_results: only_downloadable_results,
+                        current_tab: Song::default(),
+                        tab_text_size: tab_text_size as u8,
+                        chord_colour: chord_colour,
+                        chord_colour_text: loaded_colour,
                 }
         }
 }
@@ -169,6 +184,10 @@ enum Message {
         ApplyTabColumns(u8),
         /// en-/disable un-downloadable results
         SetDownloadableOnly(bool),
+        /// Set the height of tab lines
+        SetTabLineHeight(u8),
+        /// Chord colour input
+        ChordColourChange(String),
 }
 
 #[derive(Default)]
@@ -196,9 +215,19 @@ impl ApplicationState {
         pub fn view(&self) -> Column<'_, Message> {
 
                 // The main contents of the window
-                let contents = match self.screen {
+                let contents: Column<'_, Message> = match self.screen {
                         Screen::Tabs => {
-                                Column::new()
+                                if self.current_tab.lines.len() != 0 {
+                                        let main_column = column![];
+
+                                        let max_lines_per_column = (self.bar_height - self.bar_height);
+                                        for i in 0..self.max_tab_columns {
+
+                                        }
+                                        main_column
+                                } else {
+                                        Column::new()
+                                }
                         }, 
                         Screen::Search => {
                                 match &self.search_state {
@@ -335,7 +364,29 @@ impl ApplicationState {
                                                 slider(1..=9, self.max_tab_columns, Message::ApplyTabColumns)
                                                         .width(300),
                                         ].align_y(Center),
-                                        
+                                        row![
+                                        text(format!("Tab text size: {:02}", self.tab_text_size)),
+                                        Space::new(10, 0),
+                                        slider(5..=99, self.tab_text_size, Message::SetTabLineHeight)
+                                                .width(300),
+                                        ].align_y(Center),
+                                        row![
+                                                text("Select a chord colour:"),
+                                                Space::new(10, 0),
+                                                text_input("e.g. #fe640b", &self.chord_colour_text)
+                                                        .on_input(Message::ChordColourChange)
+                                                        .width(300),
+                                        ].align_y(Center),
+                                        column![
+                                                Space::new(0, 20),
+                                                text("Text will look like this.".to_string())
+                                                        .size(self.tab_text_size as f32)
+                                                        .font(Font::MONOSPACE),
+                                                text("Chords will look like this.".to_string())
+                                                        .size(self.tab_text_size as f32)
+                                                        .font(Font::MONOSPACE)
+                                                        .color(self.chord_colour),
+                                        ]
                                 ].padding(10)
                                 .spacing(20)
                         }
@@ -461,10 +512,20 @@ impl ApplicationState {
                                 self.max_tab_columns = c;
                                 let _ = self.config.set("max_tab_columns", Value::Int(c as i64));
                         },
+                        Message::SetTabLineHeight(h) => {
+                                self.tab_text_size = h;
+                                let _ = self.config.set("tab_text_size", Value::Int(h as i64));
+                        }
                         Message::SetDownloadableOnly(s) => {
                                 self.only_downloadable_results = s;
                                 let _ = self.config.set("only_downloadable_results", Value::Bool(s));
                         },
+                        Message::ChordColourChange(c) => {
+                                let colour = Color::parse(&c).unwrap_or(Color::parse("#fe640b").unwrap());
+                                let _ = self.config.set("chord_colour", Value::String(c.clone()));
+                                self.chord_colour = colour;
+                                self.chord_colour_text = c;
+                        }
                         Message::EventOccurred(e) => match e {
                                 Event::Window(window::Event::Opened { position: _, size: s }) => {
                                         self.size = s;
@@ -603,10 +664,7 @@ impl ApplicationState {
         /// Write a given Song's lines to UI 
         pub fn song_to_ui(&mut self, song: Song, song_uid: String) {
                 self.song_id_display = song_uid;
-
-
-
-                todo!("show the given tab to the user (project lines to UI)")
+                self.current_tab = song;
         }
 
         /// Load song data or ask for download

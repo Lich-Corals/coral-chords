@@ -126,6 +126,8 @@ pub mod formats {
                                         ("search_filter".into(), Value::DataSetTypeOption(None)),
                                         ("max_tab_columns".into(), Value::Int(3)),
                                         ("only_downloadable_results".into(), Value::Bool(false)),
+                                        ("tab_text_size".into(), Value::Int(18)),
+                                        ("chord_colour".into(), Value::String("#fe640b".into())),
                                 ])
                         }
                 }
