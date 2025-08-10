@@ -21,11 +21,11 @@ use iced::Alignment::Center;
 use iced::{Subscription, Theme};
 use iced::time::{self, Duration};
 use iced::color;
-use iced::widget::{button, column, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
+use iced::widget::{button, column, combo_box, container, row, scrollable, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
-use ug_scraper::types::{SearchResult, Song};
+use ug_scraper::types::{DataSetType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR, get_theme};
@@ -59,7 +59,13 @@ struct ApplicationState {
         /// The current search status
         search_state: SearchState,   
         /// The UID of the currently running song
-        current_song_uid: String,     
+        current_song_uid: String,
+        /// Selectable themes
+        themes: combo_box::State<Theme>,
+        /// Selectable tab filters
+        tab_types: combo_box::State<DataSetType>,
+        /// The currently selected search filter
+        search_filter: Option<DataSetType>,
 }
 
 impl Default for ApplicationState {
@@ -85,6 +91,8 @@ impl Default for ApplicationState {
                         },
                 };
 
+                let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
+
                 ApplicationState { 
                         screen: Screen::default(), 
                         theme: get_theme(&mut config_result.0), 
@@ -98,6 +106,9 @@ impl Default for ApplicationState {
                         search_value: String::new(),
                         search_state: SearchState::default(),
                         current_song_uid: String::new(),
+                        themes: combo_box::State::new(Theme::ALL.to_vec()),
+                        tab_types: combo_box::State::new(SUPPORTED_DOWNLOAD_TYPES.to_vec()),
+                        search_filter: search_filter,
                 }
         }
 }
@@ -123,6 +134,10 @@ enum Message {
         DownloadTab(String),
         /// Update the application
         Update,
+        /// Apply a search filter
+        ApplySearch(DataSetType),
+        /// Reset the search filter
+        ResetFilter,
 }
 
 #[derive(Default)]
@@ -157,81 +172,107 @@ impl ApplicationState {
                         Screen::Search => {
                                 match &self.search_state {
                                         SearchState::Finished(s) => {
-                                                if s.len() == 1 {
-                                                        return column![text("No search results!").color(color!(0xe64553))].padding(10)
-                                                }
                                                 let mut title_column = column![];
                                                 let mut artist_column = column![];
                                                 let mut rating_column = column![];
                                                 let mut rating_count_column = column![];
+                                                let mut type_column = column![];
 
-                                                let sorted_results = s.clone();
+                                                let mut sorted_results = s.clone();
                                                 let mut results: Vec<Vec<SearchResult>> = vec![vec![]];
                                                 let mut previous_artist: String = String::new();
                                                 let mut artist_vec: Vec<SearchResult> = vec![];
-                                                for result in sorted_results {
-                                                        if result.basic_data.artist == previous_artist {
-                                                                previous_artist = result.basic_data.artist.clone();
-                                                                artist_vec.push(result);
-                                                        } else {
-                                                                results.push(artist_vec.clone());
-                                                                artist_vec = vec![];
-                                                                previous_artist = result.basic_data.artist.clone();
-                                                                artist_vec.push(result);
+                                                if self.search_filter.is_some() {
+                                                        let mut new_results = vec![];
+                                                        for result in sorted_results {
+                                                                if result.basic_data.data_type == self.search_filter.unwrap() {
+                                                                        new_results.push(result.clone());
+                                                                }
                                                         }
+                                                        sorted_results = new_results;
                                                 }
-                                                results.push(artist_vec.clone());
-                                                let mut sorted_results: Vec<SearchResult> = vec![];
-                                                for mut artist_vec in results {
-                                                        artist_vec.sort_by_key(|s| (s.rating_value * -100.0) as i32);
-                                                        sorted_results.append(&mut artist_vec);
-                                                }
-                                                for search_result in sorted_results {
-                                                        let title = search_result.basic_data.title.clone();
-                                                        let artist = search_result.basic_data.artist.clone();
-                                                        let url = search_result.basic_data.tab_link.clone();
-                                                        let rating_count = search_result.rating_count;
-                                                        let rating: String;
-                                                        let rating_count_string: String;
-                                                        if rating_count > 0 {
-                                                                rating = format!("{:.1$}/5", search_result.rating_value, 1);
-                                                                rating_count_string = format!("x{rating_count:?}");
-                                                        } else {
-                                                                rating = "?".into();
-                                                                rating_count_string = "".into();
+                                                if sorted_results.len() == 0 {
+                                                        column![text("No search results!").color(color!(0xe64553))].padding(10)
+                                                } else {
+                                                        for result in sorted_results {
+                                                                if result.basic_data.artist == previous_artist {
+                                                                        previous_artist = result.basic_data.artist.clone();
+                                                                        artist_vec.push(result);
+                                                                } else {
+                                                                        results.push(artist_vec.clone());
+                                                                        artist_vec = vec![];
+                                                                        previous_artist = result.basic_data.artist.clone();
+                                                                        artist_vec.push(result);
+                                                                }
                                                         }
-                                                        let row_height = 40;
-                                                        title_column = title_column.push(row![
-                                                                button("Download")
-                                                                        .on_press(Message::DownloadTab(url)),
-                                                                Space::new(10, 0),
-                                                                text(title),
+                                                        results.push(artist_vec.clone());
+                                                        let mut sorted_results: Vec<SearchResult> = vec![];
+                                                        for mut artist_vec in results {
+                                                                artist_vec.sort_by_key(|s| (s.rating_value * -100.0) as i32);
+                                                                sorted_results.append(&mut artist_vec);
+                                                        }
+                                                        for search_result in sorted_results {
+                                                                let title = search_result.basic_data.title.clone();
+                                                                let artist = search_result.basic_data.artist.clone();
+                                                                let url = search_result.basic_data.tab_link.clone();
+                                                                let rating_count = search_result.rating_count;
+                                                                let rating: String;
+                                                                let rating_count_string: String;
+                                                                if rating_count > 0 {
+                                                                        rating = format!("{:.1$}/5", search_result.rating_value, 1);
+                                                                        rating_count_string = format!("x{rating_count:?}");
+                                                                } else {
+                                                                        rating = "?".into();
+                                                                        rating_count_string = "".into();
+                                                                }
+                                                                let row_height = 40;
+                                                                if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) {
+                                                                        title_column = title_column.push(row![
+                                                                                button("Download")
+                                                                                        .on_press(Message::DownloadTab(url)),
+                                                                                Space::new(10, 0),
+                                                                                text(title),
+                                                                                Space::new(30, 0),
+                                                                        ].height(row_height).align_y(Center));
+                                                                } else {
+                                                                        title_column = title_column.push(row![
+                                                                                Space::new(10, 0),
+                                                                                text(title),
+                                                                                Space::new(30, 0),
+                                                                        ].height(row_height).align_y(Center));
+                                                                }
+                                                                artist_column = artist_column.push(row![
+                                                                        text("by "),
+                                                                        text(artist).color(color!(0xea76cb)),
+                                                                        Space::new(30, 0),
+                                                                ].height(row_height).align_y(Center));
+                                                                rating_column = rating_column.push(row![
+                                                                        text("Rating: "),
+                                                                        text(rating).color(color!(0xdd7878)),
+                                                                        Space::new(10, 0),
+                                                                ].height(row_height).align_y(Center));
+                                                                rating_count_column = rating_count_column.push(row![
+                                                                        text(rating_count_string).color(color!(0xdd7878)),
+                                                                        Space::new(30, 0),
+                                                                ].height(row_height).align_y(Center));
+                                                                type_column = type_column.push(row![
+                                                                text(format!("{}", &search_result.basic_data.data_type))
+                                                                .color(color!(0x179299)),
                                                                 Space::new(30, 0),
-                                                        ].height(row_height).align_y(Center));
-                                                        artist_column = artist_column.push(row![
-                                                                text("by "),
-                                                                text(artist).color(color!(0xea76cb)),
-                                                                Space::new(30, 0),
-                                                        ].height(row_height).align_y(Center));
-                                                        rating_column = rating_column.push(row![
-                                                                text("Rating: "),
-                                                                text(rating).color(color!(0xdd7878)),
-                                                                Space::new(10, 0),
-                                                        ].height(row_height).align_y(Center));
-                                                        rating_count_column = rating_count_column.push(row![
-                                                                text(rating_count_string).color(color!(0xdd7878)),
-                                                        ].height(row_height).align_y(Center));
-                                                }
-                                                column![container(
-                                                        scrollable(row![
-                                                                title_column, artist_column, rating_column, rating_count_column,
-                                                        ])
-                                                        .spacing(10))
-                                                        .padding(10)]
+                                                                ].height(row_height).align_y(Center));
+                                                                
+                                                        }
+                                                        column![container(
+                                                                scrollable(row![
+                                                                        title_column, artist_column, rating_column, rating_count_column, type_column,
+                                                                ])
+                                                                .spacing(10))
+                                                                .padding(10)]
+                                                        }
                                                 },
                                         SearchState::Searching => column![text("Searching...")].padding(10),
                                         _ => Column::new()
-                                }
+                                }.align_x(Center)
                                 
                         },
                         Screen::Settings => {
@@ -256,7 +297,7 @@ impl ApplicationState {
                                                 .on_press(Message::SettingsPage)
                                                 .style(button::secondary)
                                                 .padding(button_padding),
-                                        Space::new(100, 1),
+                                        Space::new(100, 0),
                                         toggler(self.playing)
                                                 .label("Play")
                                                 .on_toggle(Message::PlayingToggled)
@@ -276,16 +317,22 @@ impl ApplicationState {
                                                 .on_press(Message::SettingsPage)
                                                 .style(button::secondary)
                                                 .padding(button_padding),
-                                        Space::new(100, 1),
+                                        Space::new(100, 0),
                                         text_input("Search a tab...", value)
                                                 .on_input(Message::UpdateSearchBar)
                                                 .width(300),
                                         button("Go!")
                                                 .on_press(Message::SearchTabs)
                                                 .padding(button_padding),
-                                        Space::new(10, 1),
+                                        Space::new(10, 0),
                                         button("Clear")
                                                 .on_press(Message::ClearSearch)
+                                                .padding(button_padding),
+                                        Space::new(40, 0),
+                                        combo_box(&self.tab_types, "Filter", self.search_filter.as_ref(), Message::ApplySearch)
+                                                .width(300),
+                                        button("Reset")
+                                                .on_press(Message::ResetFilter)
                                                 .padding(button_padding),
                                 ]
                         },
@@ -337,6 +384,14 @@ impl ApplicationState {
                         Message::SearchTabs => self.search_tabs(),
                         Message::ClearSearch => self.search_value = "".into(),
                         Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
+                        Message::ApplySearch(f) => {
+                                self.search_filter = Some(f);
+                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(Some(f)));
+                        },
+                        Message::ResetFilter => {
+                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(None));
+                                self.search_filter = None;
+                        },
                         _ => (),
                 }
 

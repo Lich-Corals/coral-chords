@@ -119,6 +119,7 @@ pub mod formats {
                 Float(f64),
                 Notification(NotificationType),
                 SearchResults(Vec<SearchResult>),
+                DataSetTypeOption(Option<DataSetType>),
         }
 
         impl fmt::Display for Value {
@@ -141,6 +142,7 @@ pub mod formats {
                                 config: HashMap::from([
                                         ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
                                         ("search_depth".into(), Value::Int(2)),
+                                        ("search_filter".into(), Value::DataSetTypeOption(None)),
                                 ])
                         }
                 }
