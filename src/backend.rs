@@ -124,6 +124,8 @@ pub mod formats {
                                         ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
                                         ("search_depth".into(), Value::Int(2)),
                                         ("search_filter".into(), Value::DataSetTypeOption(None)),
+                                        ("max_tab_columns".into(), Value::Int(3)),
+                                        ("only_downloadable_results".into(), Value::Bool(false)),
                                 ])
                         }
                 }

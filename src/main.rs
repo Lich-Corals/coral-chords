@@ -18,10 +18,10 @@ mod backend;
 
 use confy::ConfyError;
 use iced::Alignment::Center;
-use iced::{Subscription, Theme};
+use iced::{event, Event, Size, Subscription, Theme};
 use iced::time::{self, Duration};
-use iced::color;
-use iced::widget::{button, column, combo_box, container, row, scrollable, slider, text, text_input, toggler, Column, Row, Space};
+use iced::{color, window};
+use iced::widget::{button, checkbox, column, combo_box, container, row, scrollable, slider, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
@@ -70,6 +70,14 @@ struct ApplicationState {
         tab_types: combo_box::State<DataSetType>,
         /// The currently selected search filter
         search_filter: Option<DataSetType>,
+        /// The current window size
+        size: Size,
+        /// The height of the head bar
+        bar_height: f32,
+        /// The maximum amont of columns to show a tab on
+        max_tab_columns: u8,
+        /// Wether un-downloadable search results are disabled
+        only_downloadable_results: bool,
 }
 
 impl Default for ApplicationState {
@@ -96,7 +104,9 @@ impl Default for ApplicationState {
                 };
 
                 let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
-                let search_depth = if let Value::Int(o) = config_result.0.get("search_depth"){o}else{2};
+                let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
+                let max_tab_columns = if let Value::Int(v) = config_result.0.get("max_tab_columns"){v}else{3};
+                let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
 
                 ApplicationState { 
                         screen: Screen::default(), 
@@ -116,6 +126,10 @@ impl Default for ApplicationState {
                         themes: combo_box::State::new(Theme::ALL.to_vec()),
                         tab_types: combo_box::State::new(SUPPORTED_DOWNLOAD_TYPES.to_vec()),
                         search_filter: search_filter,
+                        size: Size::default(),
+                        bar_height: 0.0,
+                        max_tab_columns: max_tab_columns as u8,
+                        only_downloadable_results: only_downloadable_results,
                 }
         }
 }
@@ -149,6 +163,12 @@ enum Message {
         ApplyTheme(Theme),
         /// Apply search depth
         ApplySearchDepth(u8),
+        /// An iced event occured
+        EventOccurred(Event),
+        /// Maximum amont of tab columns has changed
+        ApplyTabColumns(u8),
+        /// en-/disable un-downloadable results
+        SetDownloadableOnly(bool),
 }
 
 #[derive(Default)]
@@ -237,40 +257,45 @@ impl ApplicationState {
                                                                         rating_count_string = "".into();
                                                                 }
                                                                 let row_height = 40;
-                                                                if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) {
-                                                                        title_column = title_column.push(row![
-                                                                                button("Download")
-                                                                                        .on_press(Message::DownloadTab(url)),
-                                                                                Space::new(10, 0),
-                                                                                text(title),
+                                                                if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) || !self.only_downloadable_results {
+                                                                        if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) {
+                                                                                title_column = title_column.push(row![
+                                                                                        button("Download")
+                                                                                                .on_press(Message::DownloadTab(url)),
+                                                                                        Space::new(10, 0),
+                                                                                        text(title),
+                                                                                        Space::new(30, 0),
+                                                                                ].height(row_height).align_y(Center));
+                                                                        } else {
+                                                                                title_column = title_column.push(row![
+                                                                                        button("Download")
+                                                                                                .on_press(Message::Update)
+                                                                                                .style(button::secondary),
+                                                                                        Space::new(10, 0),
+                                                                                        text(title),
+                                                                                        Space::new(30, 0),
+                                                                                ].height(row_height).align_y(Center));
+                                                                        }
+                                                                        artist_column = artist_column.push(row![
+                                                                                text("by "),
+                                                                                text(artist).color(color!(0xea76cb)),
                                                                                 Space::new(30, 0),
                                                                         ].height(row_height).align_y(Center));
-                                                                } else {
-                                                                        title_column = title_column.push(row![
+                                                                        rating_column = rating_column.push(row![
+                                                                                text("Rating: "),
+                                                                                text(rating).color(color!(0xdd7878)),
                                                                                 Space::new(10, 0),
-                                                                                text(title),
+                                                                        ].height(row_height).align_y(Center));
+                                                                        rating_count_column = rating_count_column.push(row![
+                                                                                text(rating_count_string).color(color!(0xdd7878)),
                                                                                 Space::new(30, 0),
+                                                                        ].height(row_height).align_y(Center));
+                                                                        type_column = type_column.push(row![
+                                                                        text(format!("{}", &search_result.basic_data.data_type))
+                                                                        .color(color!(0x179299)),
+                                                                        Space::new(30, 0),
                                                                         ].height(row_height).align_y(Center));
                                                                 }
-                                                                artist_column = artist_column.push(row![
-                                                                        text("by "),
-                                                                        text(artist).color(color!(0xea76cb)),
-                                                                        Space::new(30, 0),
-                                                                ].height(row_height).align_y(Center));
-                                                                rating_column = rating_column.push(row![
-                                                                        text("Rating: "),
-                                                                        text(rating).color(color!(0xdd7878)),
-                                                                        Space::new(10, 0),
-                                                                ].height(row_height).align_y(Center));
-                                                                rating_count_column = rating_count_column.push(row![
-                                                                        text(rating_count_string).color(color!(0xdd7878)),
-                                                                        Space::new(30, 0),
-                                                                ].height(row_height).align_y(Center));
-                                                                type_column = type_column.push(row![
-                                                                text(format!("{}", &search_result.basic_data.data_type))
-                                                                .color(color!(0x179299)),
-                                                                Space::new(30, 0),
-                                                                ].height(row_height).align_y(Center));
                                                                 
                                                         }
                                                         column![container(
@@ -295,32 +320,44 @@ impl ApplicationState {
                                                         .width(300),
                                         ].align_y(Center),
                                         row![
+                                                checkbox("Only show downloadable search results", self.only_downloadable_results)
+                                                        .on_toggle(Message::SetDownloadableOnly),
+                                        ].align_y(Center),
+                                        row![
                                                 text(format!("Search depth: {:02}", self.search_depth)),
                                                 Space::new(10, 0),
                                                 slider(2..=64, self.search_depth, Message::ApplySearchDepth)
                                                         .width(300),
-                                        ].align_y(Center)
+                                        ].align_y(Center),
+                                        row![
+                                                text(format!("Max tab columns: {}", self.max_tab_columns)),
+                                                Space::new(10, 0),
+                                                slider(1..=9, self.max_tab_columns, Message::ApplyTabColumns)
+                                                        .width(300),
+                                        ].align_y(Center),
                                         
                                 ].padding(10)
                                 .spacing(20)
                         }
                 };
-
-                let button_padding: [u16; 2] = [4, 12];
+                
+                let bar_button = |label| {
+                        button(row![
+                                        label
+                                ].align_y(Center))
+                                .padding([4, 12])
+                };
                 // The header bar containing basic controls
                 let controls: Row<Message> = match self.screen {
                         Screen::Tabs => { row![
-                                        button("Tab")
-                                                .on_press(Message::TabsPage)
-                                                .padding(button_padding),
-                                        button("Search")
+                                        bar_button("Tab")
+                                                .on_press(Message::TabsPage),
+                                        bar_button("Search")
                                                 .on_press(Message::SearchPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
-                                        button("Settings")
+                                                .style(button::secondary),
+                                        bar_button("Settings")
                                                 .on_press(Message::SettingsPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
+                                                .style(button::secondary),
                                         Space::new(100, 0),
                                         toggler(self.playing)
                                                 .label("Play")
@@ -330,52 +367,44 @@ impl ApplicationState {
                         Screen::Search => {
                                 let value = &self.search_value;
                                 row![
-                                        button("Tab")
+                                        bar_button("Tab")
                                                 .on_press(Message::TabsPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
-                                        button("Search")
-                                                .on_press(Message::SearchPage)
-                                                .padding(button_padding),
-                                        button("Settings")
+                                                .style(button::secondary),
+                                        bar_button("Search")
+                                                .on_press(Message::SearchPage),
+                                        bar_button("Settings")
                                                 .on_press(Message::SettingsPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
+                                                .style(button::secondary),
                                         Space::new(100, 0),
                                         text_input("Search a tab...", value)
                                                 .on_input(Message::UpdateSearchBar)
                                                 .width(300),
-                                        button("Go!")
-                                                .on_press(Message::SearchTabs)
-                                                .padding(button_padding),
+                                        bar_button("Go!")
+                                                .on_press(Message::SearchTabs),
                                         Space::new(10, 0),
-                                        button("Clear")
-                                                .on_press(Message::ClearSearch)
-                                                .padding(button_padding),
+                                        bar_button("Clear")
+                                                .on_press(Message::ClearSearch),
                                         Space::new(40, 0),
                                         combo_box(&self.tab_types, "Filter", self.search_filter.as_ref(), Message::ApplySearch)
                                                 .width(300),
-                                        button("Reset")
-                                                .on_press(Message::ResetFilter)
-                                                .padding(button_padding),
-                                ]
+                                        bar_button("Reset")
+                                                .on_press(Message::ResetFilter),
+                                ].align_y(Center)
                         },
                         Screen::Settings => { row![
-                                        button("Tab")
+                                        bar_button("Tab")
                                                 .on_press(Message::TabsPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
-                                        button("Search")
+                                                .style(button::secondary),
+                                        bar_button("Search")
                                                 .on_press(Message::SearchPage)
-                                                .style(button::secondary)
-                                                .padding(button_padding),
-                                        button("Settings")
-                                                .on_press(Message::SettingsPage)
-                                                .padding(button_padding),
+                                                .style(button::secondary),
+                                        bar_button("Settings")
+                                                .on_press(Message::SettingsPage),
                                         Space::new(100, 0),
-                                ]
+                                ].align_y(Center)
                         },
-                };
+                }.padding(10)
+                .spacing(2);
 
                 // A bar sitting at the bottom of the window to show messages to the user
                 let message_bar: Row<Message> = row![
@@ -392,7 +421,7 @@ impl ApplicationState {
                 } else if self.playing {
                         time::every(Duration::from_millis(200)).map(|_| Message::Update)
                 } else {
-                        Subscription::none()
+                        event::listen().map(Message::EventOccurred)
                 }
         }
 
@@ -427,6 +456,25 @@ impl ApplicationState {
                         Message::ApplySearchDepth(d) => {
                                 self.search_depth = d;
                                 let _ = self.config.set("search_depth", Value::Int(d as i64));
+                        },
+                        Message::ApplyTabColumns(c) => {
+                                self.max_tab_columns = c;
+                                let _ = self.config.set("max_tab_columns", Value::Int(c as i64));
+                        },
+                        Message::SetDownloadableOnly(s) => {
+                                self.only_downloadable_results = s;
+                                let _ = self.config.set("only_downloadable_results", Value::Bool(s));
+                        },
+                        Message::EventOccurred(e) => match e {
+                                Event::Window(window::Event::Opened { position: _, size: s }) => {
+                                        self.size = s;
+                                        self.bar_height = self.size.height / 18.0;
+                                },
+                                Event::Window(window::Event::Resized(s)) => {
+                                        self.size = s;
+                                        self.bar_height = self.size.height / 18.0;
+                                },
+                                _ => (),
                         },
                         _ => (),
                 }
@@ -509,6 +557,7 @@ impl ApplicationState {
                 self.notifications.push(content);
         }
 
+        /// Search for the selected query
         pub fn search_tabs(&mut self) {
                 let tx = self.channel.0.clone();
                 self.search_state = SearchState::Searching;
@@ -554,6 +603,9 @@ impl ApplicationState {
         /// Write a given Song's lines to UI 
         pub fn song_to_ui(&mut self, song: Song, song_uid: String) {
                 self.song_id_display = song_uid;
+
+
+
                 todo!("show the given tab to the user (project lines to UI)")
         }
 
