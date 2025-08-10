@@ -389,6 +389,8 @@ impl ApplicationState {
         fn subscription(&self) -> Subscription<Message> {
                 if let SearchState::Searching = self.search_state {
                         time::every(Duration::from_millis(200)).map(|_| Message::Update)
+                } else if self.playing {
+                        time::every(Duration::from_millis(200)).map(|_| Message::Update)
                 } else {
                         Subscription::none()
                 }
@@ -557,6 +559,7 @@ impl ApplicationState {
 
         /// Load song data or ask for download
         pub fn get_song_data_by_uid(&mut self, song_uid: &String, search_query: String, ask: bool) {
+                println!("{}", ask);
                 match system::get_tab_path() {
                         Ok(mut p) => {
                                 p.pop();
@@ -571,6 +574,7 @@ impl ApplicationState {
                                 } else if ask {
                                         self.screen = Screen::Search;
                                         self.search_value = search_query;
+                                        self.search_tabs();
                                 }
                         }
                         Err(e) => self.show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),
