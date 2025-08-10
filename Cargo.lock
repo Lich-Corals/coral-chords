@@ -3559,9 +3559,9 @@ dependencies = [
 
 [[package]]
 name = "ug-scraper"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7886c44266e98e0afd04bd88040b066ecaf45257213ad19e588854f7c3a488f2"
+checksum = "2b5d63b2800a33b3a39029c9d316afb78d728d221e93c1c9b4ff03a18e401459"
 dependencies = [
  "html-escape",
  "percent-encoding",

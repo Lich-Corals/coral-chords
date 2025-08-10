@@ -24,7 +24,6 @@ pub mod system {
         /// Save a given song as a local file
         pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
                 confy::store("Coral-Chords", Some((TAB_DIR.to_string() + "/" + song_uid).as_str()), song)?;
-                println!("{}", (TAB_DIR.to_string() + "/" + song_uid).as_str());
                 Ok(())
         }
 
@@ -126,7 +125,7 @@ pub mod formats {
                                         ("search_filter".into(), Value::DataSetTypeOption(None)),
                                         ("max_tab_columns".into(), Value::Int(3)),
                                         ("only_downloadable_results".into(), Value::Bool(false)),
-                                        ("tab_text_size".into(), Value::Int(18)),
+                                        ("tab_text_size".into(), Value::Int(15)),
                                         ("chord_colour".into(), Value::String("#fe640b".into())),
                                 ])
                         }

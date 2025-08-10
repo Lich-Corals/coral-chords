@@ -18,14 +18,14 @@ mod backend;
 
 use confy::ConfyError;
 use iced::Alignment::Center;
-use iced::{event, Color, Event, Font, Size, Subscription, Theme};
+use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
 use iced::time::{self, Duration};
 use iced::{color, window};
-use iced::widget::{button, checkbox, column, combo_box, container, row, scrollable, slider, text, text_input, toggler, Column, Row, Space};
+use iced::widget::{button, checkbox, column, combo_box, container, rich_text, row, scrollable, slider, span, text, text_input, toggler, Column, Row, Space};
 use std::thread::{self};
 use std::sync::mpsc::{self};
 use std::vec;
-use ug_scraper::types::{DataSetType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
+use ug_scraper::types::{DataSetType, DataType, Line, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR};
@@ -86,6 +86,8 @@ struct ApplicationState {
         chord_colour: Color,
         // The value inside the chord colour input box
         chord_colour_text: String,
+        // The padding of the main window contents
+        main_padding: f32,
 }
 
 impl Default for ApplicationState {
@@ -115,7 +117,7 @@ impl Default for ApplicationState {
                 let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
                 let max_tab_columns = if let Value::Int(v) = config_result.0.get("max_tab_columns"){v}else{3};
                 let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
-                let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{18};
+                let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{15};
                 let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour"){v}else{"#fe640b".into()};
                 let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
 
@@ -145,6 +147,7 @@ impl Default for ApplicationState {
                         tab_text_size: tab_text_size as u8,
                         chord_colour: chord_colour,
                         chord_colour_text: loaded_colour,
+                        main_padding: 10.0,
                 }
         }
 }
@@ -218,16 +221,56 @@ impl ApplicationState {
                 let contents: Column<'_, Message> = match self.screen {
                         Screen::Tabs => {
                                 if self.current_tab.lines.len() != 0 {
-                                        let main_column = column![];
+                                        let mut main_row: Row<'_, Message> = row![];
 
-                                        let max_lines_per_column = (self.bar_height - self.bar_height);
-                                        for i in 0..self.max_tab_columns {
-
+                                        let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
+                                        println!("{}", self.size.height);
+                                        let mut new_column = column![];
+                                        let mut lines_on_column = 0;
+                                        for line in &self.current_tab.lines {
+                                                if lines_on_column < max_lines_per_column as u16 {
+                                                        match line.line_type {
+                                                                DataType::Chord => {
+                                                                        lines_on_column += 1;
+                                                                        new_column = new_column.push(row![
+                                                                                text(line.text_data.clone())
+                                                                                        .color(self.chord_colour)
+                                                                                        .font(Font::MONOSPACE)
+                                                                                        .size(self.tab_text_size as f32)
+                                                                        ].height(self.tab_text_size as f32));
+                                                                },
+                                                                DataType::Lyric => {
+                                                                        lines_on_column += 1;
+                                                                        new_column = new_column.push(row![
+                                                                                text(line.text_data.clone())
+                                                                                        .font(Font::MONOSPACE)
+                                                                                        .size(self.tab_text_size as f32)
+                                                                        ].height(self.tab_text_size as f32));
+                                                                }, 
+                                                                DataType::SectionTitle => {
+                                                                        /*
+                                                                        new_column = new_column.push(row![
+                                                                                rich_text([span(
+                                                                                        line.text_data.clone())
+                                                                                                .font(Font {
+                                                                                                        style: font::Style::Italic,
+                                                                                                        ..Font::MONOSPACE }),
+                                                                                ])
+                                                                        ]);*/
+                                                                }
+                                                        }
+                                                } else {
+                                                        lines_on_column = 0;
+                                                        main_row = main_row.push(new_column);
+                                                        new_column = column![];
+                                                }
                                         }
-                                        main_column
+                                        main_row = main_row.push(new_column);
+                                        column![main_row
+                                                .spacing(20)]
                                 } else {
                                         Column::new()
-                                }
+                                }.padding(self.main_padding)
                         }, 
                         Screen::Search => {
                                 match &self.search_state {
@@ -335,7 +378,7 @@ impl ApplicationState {
                                                                 .padding(10)]
                                                         }
                                                 },
-                                        SearchState::Searching => column![text("Searching...")].padding(10),
+                                        SearchState::Searching => column![text("Searching...")].padding(self.main_padding),
                                         _ => Column::new()
                                 }.align_x(Center)
                                 
@@ -455,7 +498,8 @@ impl ApplicationState {
                                 ].align_y(Center)
                         },
                 }.padding(10)
-                .spacing(2);
+                .spacing(2)
+                .height(self.bar_height);
 
                 // A bar sitting at the bottom of the window to show messages to the user
                 let message_bar: Row<Message> = row![
@@ -529,11 +573,11 @@ impl ApplicationState {
                         Message::EventOccurred(e) => match e {
                                 Event::Window(window::Event::Opened { position: _, size: s }) => {
                                         self.size = s;
-                                        self.bar_height = self.size.height / 18.0;
+                                        self.bar_height = self.size.height / 20.0;
                                 },
                                 Event::Window(window::Event::Resized(s)) => {
                                         self.size = s;
-                                        self.bar_height = self.size.height / 18.0;
+                                        self.bar_height = self.size.height / 20.0;
                                 },
                                 _ => (),
                         },
@@ -669,7 +713,6 @@ impl ApplicationState {
 
         /// Load song data or ask for download
         pub fn get_song_data_by_uid(&mut self, song_uid: &String, search_query: String, ask: bool) {
-                println!("{}", ask);
                 match system::get_tab_path() {
                         Ok(mut p) => {
                                 p.pop();
