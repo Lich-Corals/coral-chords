@@ -21,7 +21,19 @@ An application to download and sync tabs from Ultimate Guitar with the music pla
 > IMPORTANT NOTICE  
 > Your system needs to use the D-Bus to be able to run this application.
 
-To install Coral-Chords, download the [latest release](https://github.com/Lich-Corals/coral-chords/releases) and follow these instructions.
+You can install Coral-Chords using `cargo` or manually.
+
+### Cargo installation
+Just run the following command to install:
+```bash
+cargo install Coral-Chords
+```
+You can now run `Coral-Chords` from your terminal to launch the application.
+If you want to have an entry for your system's application launcher, you need to create it yourself or follow the manual installation steps.
+
+### Manual installation
+Download and extract the [latest release](https://github.com/Lich-Corals/coral-chords/releases) and follow those instructions:
+
 > [!NOTE]
 > You can also build the binary yourself using `cargo build --release` in the cloned project directory.
 
