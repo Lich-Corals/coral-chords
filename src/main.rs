@@ -448,6 +448,7 @@ impl ApplicationState {
                                         SearchState::Searching => column![text("Searching...")].padding(self.main_padding),
                                         _ => Column::new()
                                 }.align_x(Center)
+                                .width(self.size.width - 2.0 * self.main_padding)
                                 
                         },
                         Screen::Settings => {
