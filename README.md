@@ -3,6 +3,16 @@
 
 An application to download and sync tabs from Ultimate Guitar with the music playing on Spotify.
 
+  <img width="512" height="635" alt="cch_1" src="https://github.com/user-attachments/assets/f14c3277-aec1-47f0-82cc-034ecb42f9c3" />
+  <br/>
+  Tab sync with Spotify
+  <br/>
+  <br/>
+  
+  <img width="512" height="635" alt="cch_0" src="https://github.com/user-attachments/assets/83edc6d9-b128-45f0-9dec-c89d63119791" />
+  <br/>
+  Integated search engine
+
 ## Features
 - Searching for tabs
 - Downloading tabs
