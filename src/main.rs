@@ -659,8 +659,7 @@ impl ApplicationState {
                                 ].align_y(Center)
                         },
                 }.padding(10)
-                .spacing(2)
-                .height(self.bar_height);
+                .spacing(2);
 
                 // A bar to show messages to the user
                 let mut notifications: Column<'_, Message> = column![];
