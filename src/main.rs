@@ -704,7 +704,10 @@ impl ApplicationState {
                 if let SearchState::Searching = self.search_state {
                         time::every(Duration::from_millis(200)).map(|_| Message::Update)
                 } else if self.playing {
-                        time::every(Duration::from_millis(200)).map(|_| Message::Update)
+                        Subscription::batch(vec![
+                                time::every(Duration::from_millis(200)).map(|_| Message::Update),
+                                event::listen().map(Message::EventOccurred)
+                        ])
                 } else {
                         event::listen().map(Message::EventOccurred)
                 }
