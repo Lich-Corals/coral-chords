@@ -16,6 +16,8 @@ An application to download and sync tabs from Ultimate Guitar with the music pla
 
 ## Installation
 To install Coral-Chords, download the [latest release](https://github.com/Lich-Corals/coral-chords/releases) and follow these instructions.
+> [!NOTE]
+> You can also build the binary yourself using `cargo build --release` in the cloned project directory.
 
 1. Extract the downloaded file
 2. Copy the binary file to `./local/bin` with the name `coral_chords`:
