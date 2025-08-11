@@ -129,6 +129,7 @@ pub mod formats {
                                         ("header_colour".into(), Value::String("#dc8a78".into())),
                                         ("remove_empty_lines".into(), Value::Bool(false)),
                                         ("remove_first_lines".into(), Value::Bool(true)),
+                                        ("clean_queries".into(), Value::Bool(true)),
                                 ])
                         }
                 }

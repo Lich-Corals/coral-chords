@@ -97,6 +97,8 @@ struct ApplicationState {
         header_colour: Color,
         /// The text displayed in the header colour selection field
         header_colour_text: String,
+        /// Wether automatic search queries should be cleaned
+        clean_queries: bool,
 }
 
 impl Default for ApplicationState {
@@ -133,6 +135,7 @@ impl Default for ApplicationState {
                 let loaded_header_colour = if let Value::String(v) = config_result.0.get("header_colour"){v}else{"#dc8a78".into()};
                 let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
                 let header_colour = Color::parse(&loaded_header_colour).unwrap_or(Color::parse("dc8a78").unwrap());
+                let clean_queries = if let Value::Bool(v) = config_result.0.get("clean_queries"){v}else{true};
 
                 ApplicationState {
                         screen: Screen::default(), 
@@ -165,6 +168,7 @@ impl Default for ApplicationState {
                         current_path: String::new(),
                         header_colour: header_colour,
                         header_colour_text: loaded_header_colour,
+                        clean_queries: clean_queries,
                 }
         }
 }
@@ -224,6 +228,8 @@ enum Message {
         HeaderColourChange(String),
         /// Reload the displayed tab
         Reload,
+        /// Set query cleaning
+        CleanQueries(bool),
 }
 
 #[derive(Default, PartialEq)]
@@ -463,6 +469,10 @@ impl ApplicationState {
                                                 row![
                                                         checkbox("Only show downloadable search results", self.only_downloadable_results)
                                                                 .on_toggle(Message::SetDownloadableOnly),
+                                                ].align_y(Center),
+                                                row![
+                                                        checkbox("Auto-clean search queries", self.clean_queries)
+                                                                .on_toggle(Message::CleanQueries),
                                                 ].align_y(Center),
                                                 row![
                                                         text(format!("Search depth: {:02}", self.search_depth)),
@@ -761,14 +771,14 @@ impl ApplicationState {
                                 if self.playing {
                                         if self.song_id_previoes_cycle != song_uid {
                                                 self.get_song_data_by_uid(&song_uid, 
-                                                        format!("{} {}", song_name, song_artist),
+                                                        format!("{} {}", self.clean_search_query(&song_name), song_artist),
                                                         true);
                                         }
                                         self.song_id_previoes_cycle = song_uid.clone();
                                 }
                                 if self.song_id_display != song_uid {
                                         self.get_song_data_by_uid(&song_uid,
-                                                format!("{} {}", song_name, song_artist),
+                                                format!("{} {}", self.clean_search_query(&song_name), song_artist),
                                                 false);
                                 }
                                 self.current_song_uid = song_uid.into();
@@ -830,6 +840,10 @@ impl ApplicationState {
                                 self.remove_first_lines = s;
                                 let _ = self.config.set("remove_first_lines", Value::Bool(s));
                         },
+                        Message::CleanQueries(s) => {
+                                self.clean_queries = s;
+                                let _ = self.config.set("clean_queries", Value::Bool(s));
+                        },
                         Message::ChordColourChange(c) => {
                                 let colour = Color::parse(&c).unwrap_or(Color::parse("#fe640b").unwrap());
                                 let _ = self.config.set("chord_colour", Value::String(c.clone()));
@@ -873,6 +887,19 @@ impl ApplicationState {
                         },
                         _ => (),
                 }
+        }
+
+        /// Remove non-title elements from a song title (e.g., " - 2019 Remaster")
+        fn clean_search_query(&self, query: &String) -> String {
+                if self.clean_queries {
+                        let split_markers: Vec<&str> = vec![" - ", " / ", " ("];
+                        for split_marker in split_markers {
+                                if query.contains(split_marker) {
+                                        return query.split(split_marker).collect::<Vec<&str>>()[0].to_string()
+                                }
+                        }
+                }
+                query.clone()
         }
 
         /// Show info to the user
