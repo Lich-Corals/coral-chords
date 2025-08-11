@@ -120,7 +120,7 @@ pub mod formats {
                 fn default() -> CoralConfig {
                         CoralConfig {
                                 config: HashMap::from([
-                                        ("theme".into(), Value::String("Theme::CatppuccinMocha".into())),
+                                        ("theme".into(), Value::String("Theme::Dark".into())),
                                         ("search_depth".into(), Value::Int(2)),
                                         ("search_filter".into(), Value::DataSetTypeOption(None)),
                                         ("only_downloadable_results".into(), Value::Bool(false)),

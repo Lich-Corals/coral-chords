@@ -1007,11 +1007,11 @@ fn get_config_object() -> (CoralConfig, Option<NotificationType>) {
 fn get_selected_theme(config_object: &mut CoralConfig) -> Theme {
         let selected = if let Value::String(t) = config_object.get("theme"){t}else{"".into()};
         for theme in Theme::ALL {
-                if selected.contains(theme.to_string().as_str()) {
+                if selected == theme.to_string().as_str() {
                         return theme.to_owned()
                 }
         }
-        Theme::CatppuccinMocha
+        Theme::Dark
 }
 
 fn main() {
