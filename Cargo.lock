@@ -3,6 +3,18 @@
 version = 4
 
 [[package]]
+name = "Coral-Chords"
+version = "0.1.0"
+dependencies = [
+ "confy",
+ "iced",
+ "mpris",
+ "opener",
+ "serde",
+ "ug-scraper",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -602,18 +614,6 @@ dependencies = [
  "serde",
  "serde_yaml",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "coral_chords"
-version = "0.1.0"
-dependencies = [
- "confy",
- "iced",
- "mpris",
- "opener",
- "serde",
- "ug-scraper",
 ]
 
 [[package]]

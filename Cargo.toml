@@ -1,5 +1,5 @@
 [package]
-name = "coral_chords"
+name = "Coral-Chords"
 description = "Chord downloading from Ultimate Guitar and synching with Spotify"
 repository = "https://github.com/Lich-Corals/coral-chords/"
 readme = "README.md"
