@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+
+Name=Coral-Chords
+Comment=Tab sync for Spotify
+Categories=Music;Education;
+
+Exec=.local/bin/coral_chords
+Terminal=false
