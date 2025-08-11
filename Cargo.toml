@@ -7,7 +7,7 @@ keywords = ["GUI", "guitar", "music", "Spotify", "ultimate-guitar"]
 categories = ["multimedia"]
 version = "0.1.1"
 edition = "2024"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 
 exclude = [".gitignore", ".github/*", "latex/*", "coral-chords.desktop"]
 
