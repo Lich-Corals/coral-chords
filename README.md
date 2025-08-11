@@ -3,15 +3,11 @@
 
 An application to download and sync tabs from Ultimate Guitar with the music playing on Spotify.
 
-  <img width="512" height="635" alt="cch_1" src="https://github.com/user-attachments/assets/f14c3277-aec1-47f0-82cc-034ecb42f9c3" />
+<p align="center">
+  <img width="1843" height="951" alt="cch_themes_transp" src="https://github.com/user-attachments/assets/5ee115fb-6d6b-41b2-a81b-200df17d54b2" />
   <br/>
-  Tab sync with Spotify
-  <br/>
-  <br/>
-  
-  <img width="512" height="635" alt="cch_0" src="https://github.com/user-attachments/assets/83edc6d9-b128-45f0-9dec-c89d63119791" />
-  <br/>
-  Integated search engine
+  Tab sync with Spotify and an integrated search page for tabs; easy to configure and with a wide variety of themes customization options
+</p>
 
 ## Features
 - Searching for tabs
@@ -37,5 +33,9 @@ chmod +x ~/.local/share/applications/coral-chords.desktop ~/.local/bin/coral_cho
 
 Now you should be able to launch the application using your system's default application launcher.
 
+## Documentation
+The code is widely commented with cargo-doc compatible comments for you to either read them as they are or to build the documentation using `cargo doc --no-deps`.
+A more general documentation and feature guide is available [here](https://github.com/Lich-Corals/coral-chords/blob/mistress/latex/documentation.pdf).
+
 ## Issues?
-If you experience any bugs or have a suggestion about the application, you are welcome to [submit an issue on github](https://github.com/Lich-Corals/coral-chords/issues)!
+If you experience any bugs or have a suggestion about the application, you are welcome to [submit an issue on GitHub](https://github.com/Lich-Corals/coral-chords/issues)!
