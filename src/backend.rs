@@ -126,6 +126,7 @@ pub mod formats {
                                         ("only_downloadable_results".into(), Value::Bool(false)),
                                         ("tab_text_size".into(), Value::Int(15)),
                                         ("chord_colour".into(), Value::String("#fe640b".into())),
+                                        ("header_colour".into(), Value::String("#dc8a78".into())),
                                         ("remove_empty_lines".into(), Value::Bool(false)),
                                         ("remove_first_lines".into(), Value::Bool(true)),
                                 ])

@@ -83,16 +83,20 @@ struct ApplicationState {
         tab_text_size: u8,
         /// The configured chord colour
         chord_colour: Color,
-        // The value inside the chord colour input box
+        /// The value inside the chord colour input box
         chord_colour_text: String,
-        // The padding of the main window contents
+        /// The padding of the main window contents
         main_padding: f32,
-        // Wether the lines before the first chords will be removed
+        /// Wether the lines before the first chords will be removed
         remove_first_lines: bool,
-        // Wether emyty lines will be removed from tabs
+        /// Wether emyty lines will be removed from tabs
         remove_empty_lines: bool,
-        // Path to the current tab file
+        /// Path to the current tab file
         current_path: String,
+        /// The configured colour of section headers
+        header_colour: Color,
+        /// The text displayed in the header colour selection field
+        header_colour_text: String,
 }
 
 impl Default for ApplicationState {
@@ -118,11 +122,7 @@ impl Default for ApplicationState {
                         },
                 };
 
-                notifications.push(NotificationType::Info("INFO".into()));
-                notifications.push(NotificationType::Warning("WARNING".into()));
-                notifications.push(NotificationType::Error("ERROR".into()));
-                notifications.push(NotificationType::Fatal("FATAL".into()));
-
+                // Load settings from config file on initialization of the application
                 let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
                 let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
                 let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
@@ -130,9 +130,11 @@ impl Default for ApplicationState {
                 let remove_empty_lines = if let Value::Bool(v) = config_result.0.get("remove_empty_lines"){v}else{false};
                 let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{15};
                 let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour"){v}else{"#fe640b".into()};
+                let loaded_header_colour = if let Value::String(v) = config_result.0.get("header_colour"){v}else{"#dc8a78".into()};
                 let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
+                let header_colour = Color::parse(&loaded_header_colour).unwrap_or(Color::parse("dc8a78").unwrap());
 
-                ApplicationState { 
+                ApplicationState {
                         screen: Screen::default(), 
                         theme: get_selected_theme(&mut config_result.0), 
                         selected_theme: Some(get_selected_theme(&mut config_result.0)),
@@ -161,6 +163,8 @@ impl Default for ApplicationState {
                         remove_empty_lines: remove_empty_lines,
                         remove_first_lines: remove_first_lines,
                         current_path: String::new(),
+                        header_colour: header_colour,
+                        header_colour_text: loaded_header_colour,
                 }
         }
 }
@@ -212,6 +216,14 @@ enum Message {
         ClearNotifications,
         /// Close the application
         CloseApp,
+        /// Open the licence
+        OpenLicence,
+        /// Open the readme page
+        OpenReadme,
+        /// Header colour changed
+        HeaderColourChange(String),
+        /// Reload the displayed tab
+        Reload,
 }
 
 #[derive(Default, PartialEq)]
@@ -300,8 +312,9 @@ impl ApplicationState {
                                                                                                 .font(Font {
                                                                                                         style: font::Style::Italic,
                                                                                                         ..Font::MONOSPACE })
-                                                                                                .size(self.tab_text_size as f32),
-                                                                                ])
+                                                                                                .size(self.tab_text_size as f32)
+                                                                                                .color(self.header_colour),
+                                                                                ]),
                                                                         ].height(self.tab_text_size as f32));
                                                                 }
                                                         }
@@ -442,7 +455,8 @@ impl ApplicationState {
                                                         combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
                                                                 .width(300),
                                                 ].align_y(Center),
-                                        ].spacing(20),
+                                        ].spacing(20)
+                                        .align_x(Center),
                                         column![
                                                 text("Search")
                                                         .size(25),
@@ -456,7 +470,8 @@ impl ApplicationState {
                                                         slider(2..=64, self.search_depth, Message::ApplySearchDepth)
                                                                 .width(300),
                                                 ].align_y(Center),
-                                        ].spacing(20),
+                                        ].spacing(20)
+                                        .align_x(Center),
                                         column![
                                                 text("Tabs")
                                                         .size(25),
@@ -475,6 +490,13 @@ impl ApplicationState {
                                                                 .width(300),
                                                 ].align_y(Center),
                                                 row![
+                                                        text("Header colour:"),
+                                                        Space::new(10, 0),
+                                                        text_input("#dc8a78", &self.header_colour_text)
+                                                                .on_input(Message::HeaderColourChange)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                                row![
                                                         text("Chord colour:"),
                                                         Space::new(10, 0),
                                                         text_input("#fe640b", &self.chord_colour_text)
@@ -483,17 +505,78 @@ impl ApplicationState {
                                                 ].align_y(Center),
                                                 column![
                                                         Space::new(0, 20),
-                                                        text("Text will look like this.".to_string())
-                                                                .size(self.tab_text_size as f32)
-                                                                .font(Font::MONOSPACE),
-                                                        text("Chords will look like this.".to_string())
+                                                        rich_text([span(
+                                                                "[Section header]")
+                                                                        .font(Font {
+                                                                                style: font::Style::Italic,
+                                                                                ..Font::MONOSPACE })
+                                                                        .size(self.tab_text_size as f32)
+                                                                        .color(self.header_colour),
+                                                        ]),
+                                                        text("A         C     A       B".to_string())
                                                                 .size(self.tab_text_size as f32)
                                                                 .font(Font::MONOSPACE)
                                                                 .color(self.chord_colour),
+                                                        text("Tabs will look like this.".to_string())
+                                                                .size(self.tab_text_size as f32)
+                                                                .font(Font::MONOSPACE),
                                                 ],
-                                        ].spacing(20),
+                                                
+                                        ].spacing(20)
+                                        .align_x(Center),
+                                        column![
+                                                Space::new(0, 20),
+                                                row![
+                                                        text("View "),
+                                                        rich_text([span(
+                                                        "the repository")
+                                                                .link(Message::OpenReadme)
+                                                                .underline(true),
+                                                        ]),
+                                                        text(" for mor information about the settings"),
+                                                ],
+                                                text("and how to use this program."),
+                                                Space::new(0, 30),
+                                                row![
+                                                        rich_text([span(
+                                                                "Created with ")
+                                                                        .color(color!(0x696969))
+                                                                        .size(12),
+                                                        ]),
+                                                        rich_text([span(
+                                                                "❤️")
+                                                                        .color(color!(0x933030))
+                                                                        .size(12),
+                                                        ]),
+                                                        rich_text([span(
+                                                                " by Linus Tibert (Lich-Corals)")
+                                                                        .color(color!(0x696969))
+                                                                        .size(12),
+                                                        ]),
+                                                ],
+                                                
+                                                Space::new(0, 5),
+                                                rich_text([span(
+                                                        "Coral-Chords  Copyright (C) 2025  Linus Tibert")
+                                                                .color(color!(0x696969))
+                                                                .size(11),
+                                                ]),
+                                                rich_text([span(
+                                                        "GNU Affero General Public Licence v3")
+                                                                .color(color!(0x696969))
+                                                                .link(Message::OpenLicence)
+                                                                .size(11)
+                                                                .underline(true),
+                                                ]),
+                                                text("")
+                                                        .size(12),
+                                                text("")
+                                                        .size(12)
+                                        ].align_x(Center),
                                 ].padding(10)
                                 .spacing(20)
+                                .align_x(Center)
+                                .width(self.size.width - 2.0 * self.main_padding)
                         }
                 };
                 
@@ -517,6 +600,9 @@ impl ApplicationState {
                                         Space::new(100, 0),
                                         bar_button("Edit...")
                                                 .on_press(Message::OpenTabFile),
+                                        Space::new(10, 0),
+                                        bar_button("Reload")
+                                                .on_press(Message::Reload),
                                         Space::new(10, 0),
                                         toggler(self.playing)
                                                 .label("Play")
@@ -747,9 +833,28 @@ impl ApplicationState {
                                 self.chord_colour = colour;
                                 self.chord_colour_text = c;
                         },
+                        Message::Reload => {
+                                self.song_id_display = String::new();
+                        },
+                        Message::HeaderColourChange(c) => {
+                                let colour = Color::parse(&c).unwrap_or(Color::parse("#dc8a78").unwrap());
+                                let _ = self.config.set("header_colour", Value::String(c.clone()));
+                                self.header_colour = colour;
+                                self.header_colour_text = c;
+                        },
                         Message::OpenTabFile => {
                                 if let Err(e) = opener::open(std::path::Path::new(&self.current_path)) {
                                         self.show_info(NotificationType::Error(format!("Could not open file: {}", e.to_string())));
+                                }
+                        },
+                        Message::OpenLicence => {
+                                if let Err(e) = opener::open(std::path::Path::new("https://www.gnu.org/licenses/agpl-3.0.en.html")) {
+                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e.to_string())));
+                                }
+                        },
+                        Message::OpenReadme => {
+                                if let Err(e) = opener::open(std::path::Path::new("https://github.com/Lich-Corals/coral-chords")) {
+                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e.to_string())));
                                 }
                         },
                         Message::EventOccurred(e) => match e {
