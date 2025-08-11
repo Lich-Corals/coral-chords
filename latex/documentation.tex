@@ -23,7 +23,7 @@
 \usepackage{paralist}
 \usepackage[hang,bottom]{footmisc}
 
-\title{Coral-Chords documentation}
+\title{Coral-Chords documentation and user guide}
 \author{Linus Tibert}
 \date{\today}
 
@@ -59,18 +59,18 @@
                 \pagebreak
 
         \section{Introduction}
-                This document is supposed to be a useful guide for those who want to understand how the code of CCh works. It is especially designed to be an explanation of how each component of the program is working, however, some detailed parts (such as specific \texttt{functions()}) are not mentioned here, because they are easier to understand (if you know what the whole section of the code is for), when looking at the actual code.
+                This document is supposed to be a useful guide for those who want to understand how the code of CCh works. It is especially designed to be an explanation of how each component of the program is working, however, some detailed parts (such as specific \texttt{functions()}) are not mentioned here, because they are easier to understand (if you know what the whole section of the code is for), when looking at the actual code. The code is widely commented and should be relatively easy to understand.
 
                 To make this document more accessible for everyone, it is divided into many small sections, each with a clear subject.
         \section{Project structure}
                 The project is divided into two major parts: the backend (referred to as BA), and the main program (called the frontend or FA).
 
-                The FE is the part of the program which interacts directly with the user and which is also creating the UI.\@
+                The FE is the part of the program which interacts directly. Thus, it mainly creates and updates the GUI using the Iced GUI library.\@
 
                 The BA is where the magic happens. Its purpose is to do anything not directly involving the user. Thus, it fulfils tasks involving networking, data extraction or direct interaction with the (file) system.
 
                 \subsection{Backend}
-                        Because the BA still has many tasks, it is subdivided into a bunch of sub modules defined in the code. I'll explain the tasks of each of them in the following sections.
+                        Because the BA still has many tasks, it is subdivided into a bunch of submodules defined in the code. I'll explain the tasks of each of them in the following sections.
 
                         \subsubsection{UG scraper module}
                                 This module is used to retrieve data from UG and process it into useable data. 
@@ -78,15 +78,12 @@
                                 This module was originally developed as a local library just for this project, but after it was finished, it got uploaded publicly as a separate crate to crates.io and GitHub.\footnote{https://github.com/Lich-Corals/ug-scraper-rs/}
 
                         \subsubsection{System module}
-                                As the name suggests, every direct interaction with the user's system is managed by this module. It is mainly used to read and write files and for detection of the currently running song on Spotify.
+                                As the name suggests, every direct interaction with the user's system is managed by this module. It is mainly used to read and write files.
 
                         \subsubsection{Types module}
                                 All globally used types and constants are defined here.
 
                                 This module mainly exists to keep the code clean. Having all custom types in one module makes it easier to manage them across all parts of the project.
-
-                \subsection{Frontend}
-                        % TO DO!
                         
         \section{Functionality details}
                 \subsection{Getting the data from UG}
@@ -119,10 +116,76 @@
 
                                 The data extraction is done with a few RegEx patterns. Those are basically collections of special characters telling the computer to look for a specific pattern in a given piece of data. Within those patterns, certain groups are defined, telling the RegEx engine which parts of the pattern are the wanted data.
                                 
-                                As soon as the data is extracted, it is saved %...
+                                As soon as the data is extracted, it is serialized and saved as a file in YAML format. 
 
-                                % TO DO!
+                                When the saved song is now requested by the user (by playing it on Spotify), the YAML is deserialized and drawn to the user interface with the configured look.
 
-                \subsection{Storing the data}
                 \subsection{Interaction with Spotify}
+                        CCh interacts with Spotify using the MPRIS, a standard D-Bus interface for communication between Linux applications and media players.\@
+
+                        Using MPRIS, CCh obtains the UID of the currently playing song, which is chosen by Spotify. The IDs of songs aren't human-readable, but they are unique, which makes them useable for reliably identifying a song. To connect the song ID and tab, CCh saves the serialized tab in a file named with the song's UID.\@ E.g.: \texttt{4PTG3Z6ehGkBFwjybzWkR8.yml}.
+        
+        \section{Usage guide}
+                This section will give you instructions on how to use and configure CCh.
+
+                \subsection{Basic usage}
+                        To be able to use CCh, you need to run it on a system with MPRIS support and Spotify installed.
+
+                        All you need to do after launching the application is to toggle the ``Play'' switch in the head bar. Now the application will automatically check if there is a tab is already available for this song. 
+                        
+                        \subsubsection{Searching for songs}
+                                If there is no song available to show, the view will automatically switch to ``Search'' and launch a search for the detected song title and artist.
+                                To change the search query, you can ``Clear'' the search bar, type your own query and hit ``Go!'' to launch a new search.
+
+                                If you only want a specific type of tab, you can select a filter on the right or ``Reset'' the filter to get all results again.
+
+                                When you've found a tab you want to download, you can hit ``Download'' next to the title and switch to the ``Tab'' view.
+                                This button may be inactive, which means, the tab format is not supported for downloading.
+                                Note that the tab downloaded will be saved under the ID of the currently playing song on Spotify, regardless of which title the song has.
+
+                                If you're not happy with the downloaded tab, you can download any other one. This will overwrite the currently stored file. To see the new tab, press the ``Reload'' button in the ``Tab'' view.
+
+                        \subsubsection{Editing tabs}
+                                To edit a tab, hit the ``Edit...'' button in the ``Tab'' view while the song to edit is playing. This will launch your default text editor for you to edit the contents of the file.
+
+                                The contents of the file have to be in YAML format, if this in not the case, loading the song will return ``Bad YAML data'' errors.
+
+                                Within the \texttt{lines:} part of the file will be repeating \texttt{- line\_type:}, \texttt{  text\_data:} pairs. This structure has to be maintained, while editing, adding or removing lines.
+                                
+                                Supported \texttt{line\_type}s are the following: \texttt{Lyric}, \texttt{Chord} and \texttt{SectionTitle}. The following line of \texttt{text\_data} will be displayed as the defined type.\hfill\break
+
+                                The \texttt{metadata} and \texttt{basic\_data} sections are used to store general information about the song. Some metadata entries may have \texttt{null} as a value, which means they don't store any data.
+                                
+                                When editing any of those entries, the original data types have to be maintained. This means a value containing a number without quotes shouldn't be changed to anything other than that. All data stored in the metadata section has the text type, which means the values should either be numbers in quotes or text without quotes. Every metadata entry may also be set to \texttt{null} to remove it.
+
+                                To apply any changes, save the file and ``Reload'' in the ``Tab'' view.
+
+                \subsection{Configuration}
+                        
+                                This subsection will tell you everything you need to know about each configuration option offered by CCh.
+
+                                All settings are automatically saved in a configuration file on change. The most common location for this file is \texttt{~/.config/coral-chords/config.yml}. All settings can be manually changed in the file or by changing them using the GUI.\@
+                        {
+                                \raggedright
+                                \subsubsection{Application}
+                                You can select one of 22 predefined themes for the application. The default theme is ``Dark''.
+
+                                \subsubsection{Search}
+                                If you choose to ``only show downloadable search results'', all search results which can not be downloaded will be excluded from the list. This is turned off by default.\break
+
+                                The ``Auto-clean'' feature will automatically remove things like `` - Remastered 2019'' from search queries when entering them automatically. This is on by default.\break
+
+                                The ``Search depth'' describes how many results will be listed when searching. The number is not meant literally; it is a multiplier, meaning there will be about 20 additional results for each number more than 2, which is the minimum and the default.
+
+                                Note that a higher search depth may lead to much longer searching times when a lot of results are available.\break
+
+                                \subsubsection{Tabs}
+                                ``Remove lines before first chords'' will remove the first lines of a displayed tab which only contain text data. With this feature enabled, longer tabs will fit on the screen and information like ``Tabbed by Jane Doe'' may be hidden. This setting is enabled by default.\break
+
+                                ``Remove empty lines'' will compress displayed tabs dramatically at the cost of readability by removing any lines without any text data. This is normally disabled.\break
+
+                                The ``Text size'' setting will change the size of text seen in the ``Tab'' view. The default size is 15.\break
+
+                                The ``Header colour'' and ``Chord colour'' settings change the colours of certain elements of a displayed tab. Hex-colour-codes with and without alpha channel are accepted. To restore the default colours, empty the input fields.
+                        }
 \end{document}
