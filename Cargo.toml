@@ -1,7 +1,13 @@
 [package]
 name = "coral_chords"
+description = "Chord downloading from Ultimate Guitar and synching with Spotify"
+repository = "https://github.com/Lich-Corals/coral-chords/"
+readme = "README.md"
+keywords = ["GUI", "guitar", "music", "Spotify", "ultimate-guitar", "web-scraper"]
+categories = ["multimedia"]
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [dependencies]
 mpris = "2.0.1"

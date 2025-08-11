@@ -15,6 +15,10 @@ An application to download and sync tabs from Ultimate Guitar with the music pla
 - Syncing tabs with Spotify
 
 ## Installation
+
+> IMPORTANT NOTICE  
+> Your system needs to use the D-Bus to be able to run this application.
+
 To install Coral-Chords, download the [latest release](https://github.com/Lich-Corals/coral-chords/releases) and follow these instructions.
 > [!NOTE]
 > You can also build the binary yourself using `cargo build --release` in the cloned project directory.
