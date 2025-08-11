@@ -543,7 +543,7 @@ impl ApplicationState {
                                                                 .link(Message::OpenReadme)
                                                                 .underline(true),
                                                         ]),
-                                                        text(" for mor information about the settings"),
+                                                        text(" for more information about the settings"),
                                                 ],
                                                 text("and how to use this program."),
                                                 Space::new(0, 30),
