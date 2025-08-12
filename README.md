@@ -18,8 +18,9 @@ An application to download and sync tabs from Ultimate Guitar with the music pla
 
 ## Installation
 
-> IMPORTANT NOTICE  
+> [!IMPORTANT]  
 > Your system needs to use the D-Bus to be able to run this application.
+> This means it is mainly built for Linux based systems, although it may run on macOS with too if the D-Bus is installed.
 
 You can install Coral-Chords using `cargo` or manually.
 
