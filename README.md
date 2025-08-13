@@ -41,7 +41,7 @@ Download and extract the [latest release](https://github.com/Lich-Corals/coral-c
 1. Extract the downloaded file
 2. Copy the binary file to `./local/bin` with the name `coral_chords`:
 ```bash
-cp coral_chords ~/.local/bin/coral_chords
+cp Coral-Chords ~/.local/bin/coral_chords
 ```
 3. Copy the .desktop file to `.local/share/applications/coral-chords.desktop:
 ```bash
