@@ -100,6 +100,7 @@ pub mod formats {
                 Notification(NotificationType),
                 SearchResults(Vec<SearchResult>),
                 DataSetTypeOption(Option<DataSetType>),
+                DownloadFinishedSignal,
         }
 
         impl fmt::Display for Value {

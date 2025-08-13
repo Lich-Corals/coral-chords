@@ -790,6 +790,11 @@ impl ApplicationState {
                         match v {
                                 Value::Notification(n) => self.notifications.push(n),
                                 Value::SearchResults(s) => self.search_state = SearchState::Finished(s),
+                                Value::DownloadFinishedSignal => {
+                                        if self.playing {
+                                                self.screen = Screen::Tabs;
+                                        }  
+                                }
                                 _ => (),
                         }
                 } 
@@ -806,7 +811,7 @@ impl ApplicationState {
                         Message::ClearSearch => self.search_value = "".into(),
                         Message::ClearNotifications => self.notifications = vec![],
                         Message::CloseApp => exit(1),
-                        Message::DownloadTab(url) => self.spawn_get_tab_thread(url, self.current_song_uid.to_owned()),
+                        Message::DownloadTab(url) => self.get_tab(url, self.current_song_uid.to_owned()),
                         Message::ApplySearch(f) => {
                                 self.search_filter = Some(f);
                                 let _ = self.config.set("search_filter", Value::DataSetTypeOption(Some(f)));
@@ -938,15 +943,22 @@ impl ApplicationState {
         }
 
         /// Download and store a tab locally
-        pub fn spawn_get_tab_thread(&mut self, url: String, song_uid: String) {
+        pub fn get_tab(&mut self, url: String, song_uid: String) {
                 let tx = self.channel.0.clone();
                 // A thread is spawned to prevent freezing UI
                 thread::spawn(move || match network::get_tab(&url) {
-                        Ok(s) => if let Err(e) = store_song(s, song_uid.as_str()) {
-                                if let Err(e) = tx.send(Value::Notification(
-                                                NotificationType::Error("Could not store song to local file: ".to_string() + &e.to_string()))) {
-                                        println!("Could not send message: {}", e);
-                                };
+                        Ok(s) => match store_song(s, song_uid.as_str()) {
+                                Ok(_) => {
+                                        if let Err(e) = tx.send(Value::DownloadFinishedSignal) {
+                                                println!("Could not download-finish-signal: {}", e);
+                                        }
+                                },
+                                Err(e) => {
+                                                if let Err(e) = tx.send(Value::Notification(
+                                                        NotificationType::Error("Could not store song to local file: ".to_string() + &e.to_string()))) {
+                                                println!("Could not send message: {}", e);
+                                        }
+                                },
                         },
                         Err(e) => if let Err(e) = tx.send(Value::Notification(
                                         NotificationType::Error("Something went wrong downloading the tab: ".to_string() + &e))) {
