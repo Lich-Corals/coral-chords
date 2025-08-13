@@ -14,7 +14,7 @@ exclude = [".gitignore", ".github/*", "latex/*", "coral-chords.desktop"]
 [dependencies]
 mpris = "2.0.1"
 opener = "0.8.2"
-ug-scraper = "0.2.1"
+ug-scraper = "0.2.2"
 
 [dependencies.confy]
 version = "1.0.0"

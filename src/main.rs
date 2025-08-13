@@ -478,7 +478,7 @@ impl ApplicationState {
                                                 row![
                                                         text(format!("Search depth: {:02}", self.search_depth)),
                                                         Space::new(10, 0),
-                                                        slider(2..=64, self.search_depth, Message::ApplySearchDepth)
+                                                        slider(1..=64, self.search_depth, Message::ApplySearchDepth)
                                                                 .width(300),
                                                 ].align_y(Center),
                                         ].spacing(20)
