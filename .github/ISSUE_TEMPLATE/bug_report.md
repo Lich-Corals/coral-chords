@@ -24,8 +24,9 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Desktop (please complete the following information):**
- - OS: [e.g. openSUSE]
- - Version [e.g. 0.1.0]
+ - OS: [e.g. openSUSE Leap]
+ - OS version [e.g. 15.6]
+ - Application version (visible in the copyright notice below the settings)
 
 **Additional context**
 Add any other context about the problem here.
