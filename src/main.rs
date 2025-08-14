@@ -568,7 +568,7 @@ impl ApplicationState {
                                                 
                                                 Space::new(0, 5),
                                                 rich_text([span(
-                                                        "Coral-Chords  Copyright (C) 2025  Linus Tibert")
+                                                        format!("Coral-Chords v{}  Copyright (C) 2025  Linus Tibert", env!("CARGO_PKG_VERSION")))
                                                                 .color(color!(0x696969))
                                                                 .size(11),
                                                 ]),
