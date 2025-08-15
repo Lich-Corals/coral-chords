@@ -1,4 +1,4 @@
-// Coral-Chords - Automatic chords for spotify
+// Coral-Chords - Automatic chords for Spotify
 // Copyright (C) 2025  Linus Tibert
 //
 // This program is free software: you can redistribute it and/or modify

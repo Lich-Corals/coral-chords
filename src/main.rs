@@ -1,4 +1,4 @@
-// Coral-Chords - Automatic chords for spotify
+// Coral-Chords - Automatic chords for Spotify
 // Copyright (C) 2025  Linus Tibert
 //
 // This program is free software: you can redistribute it and/or modify
@@ -37,13 +37,13 @@ use crate::backend::system::{get_config, load_song, store_song};
 struct ApplicationState {
         screen: Screen,
         theme: Theme,
-        /// The theme selected from the dropdown
+        /// The theme selected from the drop-down
         selected_theme: Option<Theme>,
         /// The globally used config object
         config: CoralConfig,
         /// The channel to communicate with other threads
         channel: (std::sync::mpsc::Sender<ThreadData>, std::sync::mpsc::Receiver<ThreadData>),
-        /// Wether to check for a song-change.
+        /// Whether to check for a song-change.
         playing: bool,
         /// Notifications which will be sent to user using the notification bar
         /// 
@@ -52,10 +52,10 @@ struct ApplicationState {
         /// The song that was playing during the last cycle.
         /// If changed, it will trigger an update of the UI or a prompt to download a song.
         song_id_previoes_cycle: String,
-        /// This will be used to check wether the display is showing the currently running song.
+        /// This will be used to check whether the display is showing the currently running song.
         /// It will not be the case if no tab is locally stored; in this case, the song will be shown on UI as soon as it is downloaded.
         song_id_display: String,
-        /// The mpris player object used to communicate with audio players
+        /// The MPRIS player object used to communicate with audio players
         player: Option<Player>,
         /// The current value in the search bar
         search_value: String,
@@ -75,7 +75,7 @@ struct ApplicationState {
         size: Size,
         /// The height of the head bar
         bar_height: f32,
-        /// Wether un-downloadable search results are disabled
+        /// Whether un-downloadable search results are disabled
         only_downloadable_results: bool,
         /// The currently displayed tab
         current_tab: Song,
@@ -87,9 +87,9 @@ struct ApplicationState {
         chord_colour_text: String,
         /// The padding of the main window contents
         main_padding: f32,
-        /// Wether the lines before the first chords will be removed
+        /// Whether the lines before the first chords will be removed
         remove_first_lines: bool,
-        /// Wether emyty lines will be removed from tabs
+        /// Whether empty lines will be removed from tabs
         remove_empty_lines: bool,
         /// Path to the current tab file
         current_path: String,
@@ -97,7 +97,7 @@ struct ApplicationState {
         header_colour: Color,
         /// The text displayed in the header colour selection field
         header_colour_text: String,
-        /// Wether automatic search queries should be cleaned
+        /// Whether automatic search queries should be cleaned
         clean_queries: bool,
 }
 
