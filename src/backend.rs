@@ -16,20 +16,27 @@
 
 /// Access the local file system
 pub mod system {
-        use std::{path::PathBuf};
-        use ug_scraper::types::*;
-        use confy::{self, ConfyError, get_configuration_file_path};
         use crate::backend::formats::{CoralConfig, TAB_DIR};
+        use confy::{self, get_configuration_file_path, ConfyError};
+        use std::path::PathBuf;
+        use ug_scraper::types::*;
 
         /// Save a given song as a local file
         pub fn store_song(song: Song, song_uid: &str) -> Result<(), ConfyError> {
-                confy::store("Coral-Chords", Some((TAB_DIR.to_string() + "/" + song_uid).as_str()), song)?;
+                confy::store(
+                        "Coral-Chords",
+                        Some((TAB_DIR.to_string() + "/" + song_uid).as_str()),
+                        song,
+                )?;
                 Ok(())
         }
 
         /// Read a requested song file
         pub fn load_song(song_uid: &str) -> Result<Song, ConfyError> {
-                confy::load::<Song>("Coral-Chords", Some((TAB_DIR.to_string() + "/" + song_uid).as_str()))          
+                confy::load::<Song>(
+                        "Coral-Chords",
+                        Some((TAB_DIR.to_string() + "/" + song_uid).as_str()),
+                )
         }
 
         /// Read the config file or return default
@@ -54,12 +61,12 @@ pub mod system {
 
 /// Formats used by Coral-Chords
 pub mod formats {
-        use std::fmt;
+        use crate::backend::system::set_config;
         use confy::ConfyError;
-        use ug_scraper::types::*;
         use serde::{Deserialize, Serialize};
         use std::collections::HashMap;
-        use crate::backend::system::{set_config};
+        use std::fmt;
+        use ug_scraper::types::*;
 
         /// The subdirectory of the config path where tab files are stored.
         pub const TAB_DIR: &str = "tabs";
@@ -82,12 +89,12 @@ pub mod formats {
 
         impl fmt::Display for NotificationType {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    write!(f, "{}", self)
+                        write!(f, "{}", self.to_owned())
                 }
         }
 
         /// A wrapper to store different kinds of data in a single HashMap
-        /// 
+        ///
         /// Used to store values in the configuration file and to send data between threads
         #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
         pub enum Value {
@@ -110,7 +117,7 @@ pub mod formats {
         }
 
         /// The uration used by CCh
-        /// 
+        ///
         /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct CoralConfig {
@@ -131,7 +138,7 @@ pub mod formats {
                                         ("remove_empty_lines".into(), Value::Bool(false)),
                                         ("remove_first_lines".into(), Value::Bool(true)),
                                         ("clean_queries".into(), Value::Bool(true)),
-                                ])
+                                ]),
                         }
                 }
         }
@@ -146,7 +153,9 @@ pub mod formats {
                 /// Set a value in the configuration file and write it.
                 pub fn set(&mut self, key: &str, value: Value) -> Result<(), ConfyError> {
                         for default_entry in CoralConfig::default().config {
-                                self.config.entry(default_entry.0).or_insert(default_entry.1);
+                                self.config
+                                        .entry(default_entry.0)
+                                        .or_insert(default_entry.1);
                         }
                         if self.config.contains_key(key) {
                                 self.config.insert(key.into(), value);
@@ -157,12 +166,15 @@ pub mod formats {
                 /// Get a value from the config file or the default
                 pub fn get(&mut self, key: &str) -> Value {
                         if self.config.contains_key(key) {
-                                return self.config.get(key).unwrap().to_owned()
+                                self.config.get(key).unwrap().to_owned()
                         } else if CoralConfig::default().config.contains_key(key) {
-                                if let Err(_) = self.set(key, CoralConfig::default().config.get(key).unwrap().clone()){};
-                                return CoralConfig::default().config.get(key).unwrap().to_owned()
+                                if let Err(_) = self.set(
+                                        key,
+                                        CoralConfig::default().config.get(key).unwrap().clone(),
+                                ) {};
+                                CoralConfig::default().config.get(key).unwrap().to_owned()
                         } else {
-                                return Value::None
+                                Value::None
                         }
                 }
         }
@@ -170,12 +182,12 @@ pub mod formats {
 
 /// Accessing UG
 pub mod network {
-        use ug_scraper::types::{SearchResult, Song};
-        use ug_scraper::tab_scraper::get_song_data;
         use ug_scraper::search_scraper::get_search_results;
+        use ug_scraper::tab_scraper::get_song_data;
+        use ug_scraper::types::{SearchResult, Song};
 
         /// Get a tab
-        /// 
+        ///
         /// Designed to be used in parallel with the main process.
         pub fn get_tab(url: &str) -> Result<Song, String> {
                 match get_song_data(url, true) {
@@ -184,7 +196,7 @@ pub mod network {
                 }
         }
 
-        pub fn search(query: &str, depth: u8) -> Result<Vec<SearchResult>, String>{
+        pub fn search(query: &str, depth: u8) -> Result<Vec<SearchResult>, String> {
                 match get_search_results(query, depth) {
                         Ok(s) => Ok(s),
                         Err(e) => Err(e.to_string()),

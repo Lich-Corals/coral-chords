@@ -145,30 +145,30 @@ impl Default for ApplicationState {
                         config: config_result.0,
                         channel: mpsc::channel::<Value>(),
                         playing: false,
-                        notifications: notifications,
+                        notifications,
                         song_id_previoes_cycle: String::new(),
                         song_id_display: String::new(),
-                        player: player,
+                        player,
                         search_value: String::new(),
                         search_state: SearchState::default(),
                         current_song_uid: String::new(),
                         themes: combo_box::State::new(Theme::ALL.to_vec()),
                         tab_types: combo_box::State::new(SUPPORTED_DOWNLOAD_TYPES.to_vec()),
-                        search_filter: search_filter,
+                        search_filter,
                         size: Size::default(),
                         bar_height: 0.0,
-                        only_downloadable_results: only_downloadable_results,
+                        only_downloadable_results,
                         current_tab: Song::default(),
                         tab_text_size: tab_text_size as u8,
-                        chord_colour: chord_colour,
+                        chord_colour,
                         chord_colour_text: loaded_colour,
                         main_padding: 10.0,
-                        remove_empty_lines: remove_empty_lines,
-                        remove_first_lines: remove_first_lines,
+                        remove_empty_lines,
+                        remove_first_lines,
                         current_path: String::new(),
-                        header_colour: header_colour,
+                        header_colour,
                         header_colour_text: loaded_header_colour,
-                        clean_queries: clean_queries,
+                        clean_queries,
                 }
         }
 }
@@ -259,7 +259,7 @@ impl ApplicationState {
                 // The main contents of the window
                 let contents: Column<'_, Message> = match self.screen {
                         Screen::Tabs => {
-                                if self.current_tab.lines.len() != 0 {
+                                if !self.current_tab.lines.is_empty() {
                                         let mut main_row: Row<'_, Message> = row![];
                                         let mut new_column = column![];
                                         if let Some(d) = &self.current_tab.metadata {
@@ -303,7 +303,7 @@ impl ApplicationState {
                                                                         ].height(self.tab_text_size as f32));
                                                                 },
                                                                 DataType::Lyric => {
-                                                                        if !self.remove_empty_lines || line.text_data.len() > 0 {
+                                                                        if !self.remove_empty_lines || !line.text_data.is_empty() {
                                                                                 new_column = new_column.push(row![
                                                                                         text(line.text_data.clone())
                                                                                                 .font(Font::MONOSPACE)
@@ -361,7 +361,7 @@ impl ApplicationState {
                                                         }
                                                         sorted_results = new_results;
                                                 }
-                                                if sorted_results.len() == 0 {
+                                                if sorted_results.is_empty() {
                                                         column![text("No search results!").color(color!(0xe64553))].padding(10)
                                                 } else {
                                                         for result in sorted_results {
@@ -692,18 +692,18 @@ impl ApplicationState {
                                 _ => (),
                         };
                 }
-                let message_bar: Row<Message>;
-                if self.notifications.len() != 0 {
-                        message_bar = row![
+                let message_bar: Row<Message> =
+                if !self.notifications.is_empty() {
+                        row![
                                 button("Clear")
                                         .on_press(Message::ClearNotifications),
                                 Space::new(10, 0),
                                 notifications,
                         ].padding(self.main_padding)
-                        .align_y(Center);
+                        .align_y(Center)
                 } else {
-                        message_bar = row![];
-                }
+                        row![]
+                };
                 
 
                 column![controls, message_bar, contents]
@@ -728,11 +728,8 @@ impl ApplicationState {
                 // First parts are updating the UI
 
                 // Update dependent of UI location
-                match self.screen {
-                        Screen::Settings => {
-                                self.theme = get_selected_theme(&mut self.config);
-                        },
-                        _ => (),
+                if self.screen == Screen::Settings {
+                        self.theme = get_selected_theme(&mut self.config);
                 }
 
                 // Following is updating the program's main logic
@@ -781,7 +778,7 @@ impl ApplicationState {
                                                 format!("{} {}", self.clean_search_query(&song_name), song_artist),
                                                 false);
                                 }
-                                self.current_song_uid = song_uid.into();
+                                self.current_song_uid = song_uid;
                         }
                 }
 
@@ -866,17 +863,17 @@ impl ApplicationState {
                         },
                         Message::OpenTabFile => {
                                 if let Err(e) = opener::open(std::path::Path::new(&self.current_path)) {
-                                        self.show_info(NotificationType::Error(format!("Could not open file: {}", e.to_string())));
+                                        self.show_info(NotificationType::Error(format!("Could not open file: {}", e)));
                                 }
                         },
                         Message::OpenLicence => {
                                 if let Err(e) = opener::open(std::path::Path::new("https://www.gnu.org/licenses/agpl-3.0.en.html")) {
-                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e.to_string())));
+                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e)));
                                 }
                         },
                         Message::OpenReadme => {
                                 if let Err(e) = opener::open(std::path::Path::new("https://github.com/Lich-Corals/coral-chords")) {
-                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e.to_string())));
+                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e)));
                                 }
                         },
                         Message::EventOccurred(e) => match e {
@@ -922,18 +919,18 @@ impl ApplicationState {
                 let tx = self.channel.0.clone();
                 self.search_state = SearchState::Searching;
                 let search_query = self.search_value.clone();
-                let search_depth: u8 = match self.config.get("search_depth".into()) {
+                let search_depth: u8 = match self.config.get("search_depth") {
                         Value::Int(d) => d as u8,
                         _ => 2,
                 };
                 thread::spawn(move || match network::search(search_query.as_str(), search_depth) {
                         Ok(s) => {
-                                if let Err(e) = tx.send(Value::SearchResults(s)) {
-                                        if let Err(e) = tx.send(Value::Notification(
-                                                        NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
-                                                println!("Could not send message: {}", e);
-                                        }
+                                if let Err(e) = tx.send(Value::SearchResults(s)) 
+                                        && let Err(e) = tx.send(Value::Notification(
+                                                NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
+                                        println!("Could not send message: {}", e);
                                 }
+                                
                         },
                         Err(e) => if let Err(e) = tx.send(Value::Notification(
                                         NotificationType::Error("Something went wrong getting the search results: ".to_string() + &e))) {
@@ -985,7 +982,7 @@ impl ApplicationState {
 
                                 if self.playing {
                                         if p.is_file() {
-                                                match load_song(&song_uid) {
+                                                match load_song(song_uid) {
                                                         Ok(s) => self.song_to_ui(s, song_uid.to_owned()),
                                                         Err(e) => self.show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
                                                 }
