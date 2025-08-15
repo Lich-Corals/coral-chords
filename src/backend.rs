@@ -95,7 +95,7 @@ pub mod formats {
 
         /// A wrapper to store different kinds of data in a single HashMap
         ///
-        /// Used to store values in the configuration file and to send data between threads
+        /// Used to store values in the configuration file
         #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
         pub enum Value {
                 #[default]
@@ -104,10 +104,7 @@ pub mod formats {
                 Bool(bool),
                 Int(i64),
                 Float(f64),
-                Notification(NotificationType),
-                SearchResults(Vec<SearchResult>),
                 DataSetTypeOption(Option<DataSetType>),
-                DownloadFinishedSignal,
         }
 
         impl fmt::Display for Value {
@@ -116,7 +113,23 @@ pub mod formats {
                 }
         }
 
-        /// The uration used by CCh
+        /// To send data between threads
+        #[derive(Debug, Clone, Default, PartialEq)]
+        pub enum ThreadData {
+                #[default]
+                None,
+                Notification(NotificationType),
+                SearchResults(Vec<SearchResult>),
+                DownloadFinishedSignal,
+        }
+
+        impl fmt::Display for ThreadData {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        write!(f, "{:?}", self)
+                }
+        }
+
+        /// The configuration used by CCh
         ///
         /// Uses HashMaps because old settings would be deleted when new ones are added to existing config files.
         #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -29,7 +29,7 @@ use std::vec;
 use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 use mpris::{Metadata, PlayerFinder, Player};
 
-use crate::backend::formats::{CoralConfig, NotificationType, Value, TAB_DIR};
+use crate::backend::formats::{CoralConfig, NotificationType, ThreadData, Value, TAB_DIR};
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
 
@@ -42,7 +42,7 @@ struct ApplicationState {
         /// The globally used config object
         config: CoralConfig,
         /// The channel to communicate with other threads
-        channel: (std::sync::mpsc::Sender<Value>, std::sync::mpsc::Receiver<Value>),
+        channel: (std::sync::mpsc::Sender<ThreadData>, std::sync::mpsc::Receiver<ThreadData>),
         /// Wether to check for a song-change.
         playing: bool,
         /// Notifications which will be sent to user using the notification bar
@@ -143,7 +143,7 @@ impl Default for ApplicationState {
                         selected_theme: Some(get_selected_theme(&mut config_result.0)),
                         search_depth: search_depth as u8,
                         config: config_result.0,
-                        channel: mpsc::channel::<Value>(),
+                        channel: mpsc::channel::<ThreadData>(),
                         playing: false,
                         notifications,
                         song_id_previoes_cycle: String::new(),
@@ -324,7 +324,7 @@ impl ApplicationState {
                                                                         ].height(self.tab_text_size as f32));
                                                                 }
                                                         }
-                                                        if !(lines_on_column < max_lines_per_column as u16) 
+                                                        if (lines_on_column >= max_lines_per_column as u16) 
                                                                 && line.line_type == DataType::Lyric {
                                                                 lines_on_column = 0;
                                                                 main_row = main_row.push(new_column);
@@ -744,8 +744,8 @@ impl ApplicationState {
                                         None
                                 }
                         };
-                        if song_metadata.is_some() {
-                                let song_uid: String = match song_metadata.clone().unwrap().track_id() {
+                        if let Some(song_metadata) = song_metadata {
+                                let song_uid: String = match song_metadata.track_id() {
                                         Some(id) => {
                                                 if id.to_string().contains("spotify") {
                                                         id.to_string().replace("/com/spotify/track/", "")
@@ -757,11 +757,11 @@ impl ApplicationState {
                                         }
                                         None => "unknown".into(),
                                 };
-                                let song_name: String = match &song_metadata.clone().unwrap().title() {
+                                let song_name: String = match &song_metadata.title() {
                                         Some(t) => t.to_string(),
                                         None => "unknown".into()
                                 };
-                                let song_artist: String = match &song_metadata.unwrap().artists() {
+                                let song_artist: String = match &song_metadata.artists() {
                                         Some(a) => a[0].into(),
                                         None => "unknown".into()
                                 };
@@ -785,9 +785,9 @@ impl ApplicationState {
                 // Check if any thread returned a value
                 if let Ok(v) = self.channel.1.try_recv() {
                         match v {
-                                Value::Notification(n) => self.notifications.push(n),
-                                Value::SearchResults(s) => self.search_state = SearchState::Finished(s),
-                                Value::DownloadFinishedSignal => {
+                                ThreadData::Notification(n) => self.notifications.push(n),
+                                ThreadData::SearchResults(s) => self.search_state = SearchState::Finished(s),
+                                ThreadData::DownloadFinishedSignal => {
                                         if self.playing {
                                                 self.screen = Screen::Tabs;
                                         }  
@@ -892,7 +892,7 @@ impl ApplicationState {
         }
 
         /// Remove non-title elements from a song title (e.g., " - 2019 Remaster")
-        fn clean_search_query(&self, query: &String) -> String {
+        fn clean_search_query(&self, query: &str) -> String {
                 if self.clean_queries {
                         let split_markers: Vec<&str> = vec![" - ", " / ", " ("];
                         for split_marker in split_markers {
@@ -901,7 +901,7 @@ impl ApplicationState {
                                 }
                         }
                 }
-                query.clone()
+                query.to_owned()        
         }
 
         /// Show info to the user
@@ -925,14 +925,14 @@ impl ApplicationState {
                 };
                 thread::spawn(move || match network::search(search_query.as_str(), search_depth) {
                         Ok(s) => {
-                                if let Err(e) = tx.send(Value::SearchResults(s)) 
-                                        && let Err(e) = tx.send(Value::Notification(
+                                if let Err(e) = tx.send(ThreadData::SearchResults(s)) 
+                                        && let Err(e) = tx.send(ThreadData::Notification(
                                                 NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
                                         println!("Could not send message: {}", e);
                                 }
                                 
                         },
-                        Err(e) => if let Err(e) = tx.send(Value::Notification(
+                        Err(e) => if let Err(e) = tx.send(ThreadData::Notification(
                                         NotificationType::Error("Something went wrong getting the search results: ".to_string() + &e))) {
                                 println!("Could not send message: {}", e);
                         },
@@ -946,18 +946,18 @@ impl ApplicationState {
                 thread::spawn(move || match network::get_tab(&url) {
                         Ok(s) => match store_song(s, song_uid.as_str()) {
                                 Ok(_) => {
-                                        if let Err(e) = tx.send(Value::DownloadFinishedSignal) {
+                                        if let Err(e) = tx.send(ThreadData::DownloadFinishedSignal) {
                                                 println!("Could not download-finish-signal: {}", e);
                                         }
                                 },
                                 Err(e) => {
-                                                if let Err(e) = tx.send(Value::Notification(
+                                                if let Err(e) = tx.send(ThreadData::Notification(
                                                         NotificationType::Error("Could not store song to local file: ".to_string() + &e.to_string()))) {
                                                 println!("Could not send message: {}", e);
                                         }
                                 },
                         },
-                        Err(e) => if let Err(e) = tx.send(Value::Notification(
+                        Err(e) => if let Err(e) = tx.send(ThreadData::Notification(
                                         NotificationType::Error("Something went wrong downloading the tab: ".to_string() + &e))) {
                                 println!("Could not send message: {}", e);
                         },
