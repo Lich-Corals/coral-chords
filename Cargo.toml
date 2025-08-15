@@ -9,7 +9,7 @@ version = "0.1.3"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 
-exclude = [".gitignore", ".github/*", "latex/*", "coral-chords.desktop"]
+exclude = [".gitignore", ".github/*", "latex/*", "coral-chords.desktop", "rustfmt.toml"]
 
 [dependencies]
 mpris = "2.0.1"
