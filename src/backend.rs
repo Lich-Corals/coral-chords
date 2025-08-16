@@ -151,6 +151,7 @@ pub mod formats {
                                         ("remove_empty_lines".into(), Value::Bool(false)),
                                         ("remove_first_lines".into(), Value::Bool(true)),
                                         ("clean_queries".into(), Value::Bool(true)),
+                                        ("notify_about_updates".into(), Value::Bool(true)),
                                 ]),
                         }
                 }
@@ -195,6 +196,8 @@ pub mod formats {
 
 /// Accessing UG
 pub mod network {
+        use e_crate_version_checker::prelude::version::is_newer_version_available;
+        use e_crate_version_checker::register_user_crate;
         use ug_scraper::search_scraper::get_search_results;
         use ug_scraper::tab_scraper::get_song_data;
         use ug_scraper::types::{SearchResult, Song};
@@ -214,5 +217,13 @@ pub mod network {
                         Ok(s) => Ok(s),
                         Err(e) => Err(e.to_string()),
                 }
+        }
+
+        pub fn check_for_newer_version() -> bool {
+                register_user_crate!();
+
+                let crate_name = "Coral-Chords";
+
+                is_newer_version_available(env!("CARGO_PKG_VERSION"), crate_name).unwrap_or(false)
         }
 }

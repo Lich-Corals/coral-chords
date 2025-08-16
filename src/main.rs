@@ -30,6 +30,7 @@ use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOW
 use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, NotificationType, ThreadData, Value, TAB_DIR};
+use crate::backend::network::check_for_newer_version;
 use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
 
@@ -99,6 +100,8 @@ struct ApplicationState {
         header_colour_text: String,
         /// Whether automatic search queries should be cleaned
         clean_queries: bool,
+        /// Whether to show a notification to the user if a new version of the package is available
+        notify_about_updates: bool,
 }
 
 impl Default for ApplicationState {
@@ -136,6 +139,11 @@ impl Default for ApplicationState {
                 let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
                 let header_colour = Color::parse(&loaded_header_colour).unwrap_or(Color::parse("dc8a78").unwrap());
                 let clean_queries = if let Value::Bool(v) = config_result.0.get("clean_queries"){v}else{true};
+                let notify_about_updates = if let Value::Bool(v) = config_result.0.get("notify_about_updates"){v}else{true};
+                
+                if notify_about_updates && check_for_newer_version() {
+                    notifications.push(NotificationType::Info("A newer version of the crate is available for download.".into()));
+                }
 
                 ApplicationState {
                         screen: Screen::default(), 
@@ -169,6 +177,7 @@ impl Default for ApplicationState {
                         header_colour,
                         header_colour_text: loaded_header_colour,
                         clean_queries,
+                        notify_about_updates,
                 }
         }
 }
@@ -230,6 +239,8 @@ enum Message {
         Reload,
         /// Set query cleaning
         CleanQueries(bool),
+        /// Toggle update notifications
+        ToggleUpdateNotification(bool),
 }
 
 #[derive(Default, PartialEq)]
@@ -461,6 +472,10 @@ impl ApplicationState {
                                                         Space::new(10, 0),
                                                         combo_box(&self.themes, "Theme", self.selected_theme.as_ref(), Message::ApplyTheme)
                                                                 .width(300),
+                                                ].align_y(Center),
+                                                row![
+                                                        checkbox("Notify about updates", self.notify_about_updates)
+                                                                .on_toggle(Message::ToggleUpdateNotification),
                                                 ].align_y(Center),
                                         ].spacing(20)
                                         .align_x(Center),
@@ -837,6 +852,10 @@ impl ApplicationState {
                         Message::RemoveEmptyLines(s) => {
                                 self.remove_empty_lines = s;
                                 let _ = self.config.set("remove_empty_lines", Value::Bool(s));
+                        },
+                        Message::ToggleUpdateNotification(s) => {
+                                self.notify_about_updates = s;
+                                let _ = self.config.set("notify_about_updates", Value::Bool(s));
                         },
                         Message::RemoveFirstLines(s) => {
                                 self.remove_first_lines = s;
