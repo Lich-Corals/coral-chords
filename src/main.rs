@@ -463,7 +463,7 @@ impl ApplicationState {
                                 
                         },
                         Screen::Settings => {
-                                column![
+                                column![scrollable(column![
                                         column![
                                                 text("Application")
                                                         .size(25),
@@ -603,6 +603,7 @@ impl ApplicationState {
                                 .spacing(20)
                                 .align_x(Center)
                                 .width(self.size.width - 2.0 * self.main_padding)
+                                )]
                         }
                 };
                 

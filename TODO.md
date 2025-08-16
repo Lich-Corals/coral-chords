@@ -5,5 +5,6 @@
 - pause/play/rewind control from GUI using MPRIS
     - Automatic pause/play with countdown (OPTIONAL)
 - Played song log (OPTIONAL)
-- Inform user about newer available version
 - Recolour optional metadata at the start of songs
+- [DONE] Make settings scrollable
+- [DONE] Inform user about newer available version
