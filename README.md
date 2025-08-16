@@ -37,7 +37,7 @@ Download and extract the [latest release](https://github.com/Lich-Corals/coral-c
 
 > [!NOTE]
 > You can also build the binary yourself using `cargo build --release` in the cloned project directory.
-> Building this package yourself requires the development tools of `openssl` to be installed using your system's package manager.
+> Building this package yourself requires the development tools of `openssl` to be installed using your system's package manager
 
 1. Extract the downloaded file
 2. Copy the binary file to `./local/bin` with the name `coral_chords`:
