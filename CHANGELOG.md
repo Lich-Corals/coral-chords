@@ -1,3 +1,12 @@
+## [0.2.0]
+### Added
+- Notification if newer version of package is available on crates.io
+- Setting to disable the feature above
+### Fixed
+- Settings not scrollable when the window is too small
+### Added dependencies
+- e_crate_version_checker
+
 ## [0.1.3]
 ### Added
 - Automatic return to "Tab" view after a download has finished while "play" is enabled
