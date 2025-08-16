@@ -1,4 +1,4 @@
-## [0.2.0]
+## [0.1.4]
 ### Added
 - Notification if newer version of package is available on crates.io
 - Setting to disable the feature above
