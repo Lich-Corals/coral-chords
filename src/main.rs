@@ -32,9 +32,11 @@ use std::thread::{self};
 use std::vec;
 use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 
-use crate::backend::formats::{CoralConfig, NotificationType, ThreadData, Value, TAB_DIR};
+use crate::backend::formats::{
+        CoralConfig, LoggedSong, NotificationType, ThreadData, Value, TAB_DIR,
+};
 use crate::backend::network::check_for_newer_version;
-use crate::backend::system::{get_config, load_song, store_song};
+use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
 use crate::backend::{network, system};
 
 /// The application's properties
@@ -110,6 +112,12 @@ struct ApplicationState {
         notify_about_updates: bool,
         /// Whether to keep a local log of the songs played
         log_played_songs: bool,
+        /// The length of the currently playing song in seconds
+        current_song_length: u64,
+        /// The time stamp at which the currently playing song was started
+        start_time_stamp: u64,
+        /// Whether the currently playing song was already added to the log file
+        song_in_log: bool,
 }
 
 impl Default for ApplicationState {
@@ -249,6 +257,9 @@ impl Default for ApplicationState {
                         clean_queries,
                         notify_about_updates,
                         log_played_songs,
+                        current_song_length: 0,
+                        start_time_stamp: 0,
+                        song_in_log: true,
                 }
         }
 }
@@ -842,8 +853,16 @@ impl ApplicationState {
                                         Some(a) => a[0].into(),
                                         None => "unknown".into(),
                                 };
+                                let song_length: u64 = match &song_metadata.length_in_microseconds()
+                                {
+                                        Some(l) => *l / 1_000_000,
+                                        None => 180,
+                                };
+                                self.current_song_length = song_length;
                                 if self.playing {
                                         if self.song_id_previoes_cycle != song_uid {
+                                                self.start_time_stamp = current_time();
+                                                self.song_in_log = false;
                                                 self.get_song_data_by_uid(
                                                         &song_uid,
                                                         format!(
@@ -857,6 +876,8 @@ impl ApplicationState {
                                         self.song_id_previoes_cycle = song_uid.clone();
                                 }
                                 if self.song_id_display != song_uid {
+                                        self.song_in_log = false;
+                                        self.start_time_stamp = current_time();
                                         self.get_song_data_by_uid(
                                                 &song_uid,
                                                 format!(
@@ -866,6 +887,23 @@ impl ApplicationState {
                                                 ),
                                                 false,
                                         );
+                                }
+                                if current_time() - self.start_time_stamp
+                                        >= self.current_song_length / 2
+                                        && self.log_played_songs
+                                        && !self.song_in_log
+                                {
+                                        let current_song = LoggedSong {
+                                                name: self.current_tab.basic_data.title.clone(),
+                                                artist: self.current_tab.basic_data.artist.clone(),
+                                                id: self.current_song_uid.clone(),
+                                                length_s: self.current_song_length,
+                                                timestamp: current_time(),
+                                        };
+                                        add_to_song_log(current_song).unwrap_or_else(|error| {
+                                            self.show_info(NotificationType::Error(format!("Something went wrong adding the current song to the log: {}", error)));
+                                        });
+                                        self.song_in_log = true;
                                 }
                                 self.current_song_uid = song_uid;
                         }
@@ -893,7 +931,10 @@ impl ApplicationState {
                         Message::SearchPage => self.screen = Screen::Search,
                         Message::SettingsPage => self.screen = Screen::Settings,
 
-                        Message::PlayingToggled(s) => self.playing = s,
+                        Message::PlayingToggled(s) => {
+                                self.playing = s;
+                                self.start_time_stamp = current_time();
+                        }
                         Message::UpdateSearchBar(s) => self.search_value = s,
                         Message::SearchTabs => self.search_tabs(),
                         Message::ClearSearch => self.search_value = "".into(),

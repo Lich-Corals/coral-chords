@@ -16,9 +16,12 @@
 
 /// Access the local file system
 pub mod system {
-        use crate::backend::formats::{CoralConfig, TAB_DIR};
+        use crate::backend::formats::{CoralConfig, LoggedSong, TAB_DIR};
         use confy::{self, get_configuration_file_path, ConfyError};
-        use std::path::PathBuf;
+        use std::{
+                path::PathBuf,
+                time::{Duration, SystemTime, UNIX_EPOCH},
+        };
         use ug_scraper::types::*;
 
         /// Save a given song as a local file
@@ -37,6 +40,34 @@ pub mod system {
                         "Coral-Chords",
                         Some((TAB_DIR.to_string() + "/" + song_uid).as_str()),
                 )
+        }
+
+        /// Returns the current system time as UNIX time stamp or 1 if an error occurs
+        pub fn current_time() -> u64 {
+                SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_else(|_| Duration::from_secs(1))
+                        .as_secs()
+        }
+
+        /// Get the local song log
+        pub fn get_song_log() -> (Vec<LoggedSong>, Option<ConfyError>) {
+                let result = confy::load::<Vec<LoggedSong>>("Coral-Chords", Some("song_log"));
+                match result {
+                        Ok(c) => (c, None),
+                        Err(e) => (vec![], Some(e)),
+                }
+        }
+
+        /// Add a song to the log
+        pub fn add_to_song_log(song: LoggedSong) -> Result<(), ConfyError> {
+                let mut song_log_data = get_song_log();
+                if let Some(e) = song_log_data.1 {
+                        return Err(e);
+                }
+                song_log_data.0.push(song);
+                confy::store("Coral-Chords", Some("song_log"), song_log_data.0)?;
+                Ok(())
         }
 
         /// Read the config file or return default
@@ -127,6 +158,16 @@ pub mod formats {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                         write!(f, "{:?}", self)
                 }
+        }
+
+        /// The type used as a song in the song log
+        #[derive(Debug, Clone, Serialize, Deserialize)]
+        pub struct LoggedSong {
+                pub name: String,
+                pub artist: String,
+                pub id: String,
+                pub length_s: u64,
+                pub timestamp: u64,
         }
 
         /// The configuration used by CCh
