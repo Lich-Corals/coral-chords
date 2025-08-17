@@ -17,22 +17,25 @@
 mod backend;
 
 use confy::ConfyError;
-use iced::Alignment::Center;
-use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
 use iced::time::{self, Duration};
+use iced::widget::{
+        button, checkbox, column, combo_box, container, rich_text, row, scrollable, slider, span,
+        text, text_input, toggler, Column, Row, Space,
+};
+use iced::Alignment::Center;
 use iced::{color, window};
-use iced::widget::{button, checkbox, column, combo_box, container, rich_text, row, scrollable, slider, span, text, text_input, toggler, Column, Row, Space};
+use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
+use mpris::{Metadata, Player, PlayerFinder};
 use std::process::exit;
-use std::thread::{self};
 use std::sync::mpsc::{self};
+use std::thread::{self};
 use std::vec;
 use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
-use mpris::{Metadata, PlayerFinder, Player};
 
 use crate::backend::formats::{CoralConfig, NotificationType, ThreadData, Value, TAB_DIR};
 use crate::backend::network::check_for_newer_version;
-use crate::backend::{network, system};
 use crate::backend::system::{get_config, load_song, store_song};
+use crate::backend::{network, system};
 
 /// The application's properties
 struct ApplicationState {
@@ -43,12 +46,15 @@ struct ApplicationState {
         /// The globally used config object
         config: CoralConfig,
         /// The channel to communicate with other threads
-        channel: (std::sync::mpsc::Sender<ThreadData>, std::sync::mpsc::Receiver<ThreadData>),
+        channel: (
+                std::sync::mpsc::Sender<ThreadData>,
+                std::sync::mpsc::Receiver<ThreadData>,
+        ),
         /// Whether to check for a song-change.
         playing: bool,
         /// Notifications which will be sent to user using the notification bar
-        /// 
-        /// Those notifications shall be received from show_info() 
+        ///
+        /// Those notifications shall be received from show_info()
         notifications: Vec<NotificationType>,
         /// The song that was playing during the last cycle.
         /// If changed, it will trigger an update of the UI or a prompt to download a song.
@@ -61,7 +67,7 @@ struct ApplicationState {
         /// The current value in the search bar
         search_value: String,
         /// The current search status
-        search_state: SearchState,   
+        search_state: SearchState,
         /// The search depth to use
         search_depth: u8,
         /// The UID of the currently running song
@@ -102,6 +108,8 @@ struct ApplicationState {
         clean_queries: bool,
         /// Whether to show a notification to the user if a new version of the package is available
         notify_about_updates: bool,
+        /// Whether to keep a local log of the songs played
+        log_played_songs: bool,
 }
 
 impl Default for ApplicationState {
@@ -117,37 +125,99 @@ impl Default for ApplicationState {
                         Ok(pf) => match pf.find_active() {
                                 Ok(p) => Some(p),
                                 Err(e) => {
-                                        notifications.push(NotificationType::Fatal("Could not find any media player: ".to_string() + &e.to_string()));
+                                        notifications.push(NotificationType::Fatal(
+                                                "Could not find any media player: ".to_string()
+                                                        + &e.to_string(),
+                                        ));
                                         None
-                                },
+                                }
                         },
                         Err(e) => {
-                                notifications.push(NotificationType::Fatal("Could not connect to D-Bus: ".to_string() + &e.to_string()));
+                                notifications.push(NotificationType::Fatal(
+                                        "Could not connect to D-Bus: ".to_string() + &e.to_string(),
+                                ));
                                 None
-                        },
+                        }
                 };
 
                 // Load settings from config file on initialization of the application
-                let search_filter = if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter"){o}else{None};
-                let search_depth = if let Value::Int(v) = config_result.0.get("search_depth"){v}else{2};
-                let only_downloadable_results = if let Value::Bool(v) = config_result.0.get("only_downloadable_results"){v}else{false};
-                let remove_first_lines = if let Value::Bool(v) = config_result.0.get("remove_first_lines"){v}else{false};
-                let remove_empty_lines = if let Value::Bool(v) = config_result.0.get("remove_empty_lines"){v}else{false};
-                let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size"){v}else{15};
-                let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour"){v}else{"#fe640b".into()};
-                let loaded_header_colour = if let Value::String(v) = config_result.0.get("header_colour"){v}else{"#dc8a78".into()};
-                let chord_colour = Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
-                let header_colour = Color::parse(&loaded_header_colour).unwrap_or(Color::parse("dc8a78").unwrap());
-                let clean_queries = if let Value::Bool(v) = config_result.0.get("clean_queries"){v}else{true};
-                let notify_about_updates = if let Value::Bool(v) = config_result.0.get("notify_about_updates"){v}else{true};
-                
+                let search_filter =
+                        if let Value::DataSetTypeOption(o) = config_result.0.get("search_filter") {
+                                o
+                        } else {
+                                None
+                        };
+                let search_depth = if let Value::Int(v) = config_result.0.get("search_depth") {
+                        v
+                } else {
+                        2
+                };
+                let only_downloadable_results =
+                        if let Value::Bool(v) = config_result.0.get("only_downloadable_results") {
+                                v
+                        } else {
+                                false
+                        };
+                let remove_first_lines =
+                        if let Value::Bool(v) = config_result.0.get("remove_first_lines") {
+                                v
+                        } else {
+                                false
+                        };
+                let remove_empty_lines =
+                        if let Value::Bool(v) = config_result.0.get("remove_empty_lines") {
+                                v
+                        } else {
+                                false
+                        };
+                let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size") {
+                        v
+                } else {
+                        15
+                };
+                let loaded_colour = if let Value::String(v) = config_result.0.get("chord_colour") {
+                        v
+                } else {
+                        "#fe640b".into()
+                };
+                let loaded_header_colour =
+                        if let Value::String(v) = config_result.0.get("header_colour") {
+                                v
+                        } else {
+                                "#dc8a78".into()
+                        };
+                let chord_colour =
+                        Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
+                let header_colour = Color::parse(&loaded_header_colour)
+                        .unwrap_or(Color::parse("dc8a78").unwrap());
+                let clean_queries = if let Value::Bool(v) = config_result.0.get("clean_queries") {
+                        v
+                } else {
+                        true
+                };
+                let notify_about_updates =
+                        if let Value::Bool(v) = config_result.0.get("notify_about_updates") {
+                                v
+                        } else {
+                                true
+                        };
+
+                let log_played_songs =
+                        if let Value::Bool(v) = config_result.0.get("log_played_songs") {
+                                v
+                        } else {
+                                true
+                        };
+
                 if notify_about_updates && check_for_newer_version() {
-                    notifications.push(NotificationType::Info("A newer version of the crate is available for download.".into()));
+                        notifications.push(NotificationType::Info(
+                                "A newer version of the crate is available for download.".into(),
+                        ));
                 }
 
                 ApplicationState {
-                        screen: Screen::default(), 
-                        theme: get_selected_theme(&mut config_result.0), 
+                        screen: Screen::default(),
+                        theme: get_selected_theme(&mut config_result.0),
                         selected_theme: Some(get_selected_theme(&mut config_result.0)),
                         search_depth: search_depth as u8,
                         config: config_result.0,
@@ -178,6 +248,7 @@ impl Default for ApplicationState {
                         header_colour_text: loaded_header_colour,
                         clean_queries,
                         notify_about_updates,
+                        log_played_songs,
                 }
         }
 }
@@ -211,7 +282,7 @@ enum Message {
         ApplyTheme(Theme),
         /// Apply search depth
         ApplySearchDepth(u8),
-        /// An iced event occured
+        /// An iced event occurred
         EventOccurred(Event),
         /// en-/disable un-downloadable results
         SetDownloadableOnly(bool),
@@ -241,6 +312,8 @@ enum Message {
         CleanQueries(bool),
         /// Toggle update notifications
         ToggleUpdateNotification(bool),
+        /// Whether to log the played songs to a local file or not
+        TogglePlayedLog(bool),
 }
 
 #[derive(Default, PartialEq)]
@@ -266,7 +339,6 @@ impl ApplicationState {
 
         /// Function to get the current view
         pub fn view(&self) -> Column<'_, Message> {
-
                 // The main contents of the window
                 let contents: Column<'_, Message> = match self.screen {
                         Screen::Tabs => {
@@ -294,7 +366,6 @@ impl ApplicationState {
                                                                 .size(self.tab_text_size as f32)
                                                 ].height(self.tab_text_size as f32));
                                         }
-                                                
                                         let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
                                         let mut lines_on_column = 3;
                                         let mut first_chords_found = false;
@@ -321,7 +392,7 @@ impl ApplicationState {
                                                                                                 .size(self.tab_text_size as f32)
                                                                                 ].height(self.tab_text_size as f32));
                                                                         }
-                                                                }, 
+                                                                },
                                                                 DataType::SectionTitle => {
                                                                         new_column = new_column.push(row![
                                                                                 rich_text([span(
@@ -335,7 +406,7 @@ impl ApplicationState {
                                                                         ].height(self.tab_text_size as f32));
                                                                 }
                                                         }
-                                                        if (lines_on_column >= max_lines_per_column as u16) 
+                                                        if (lines_on_column >= max_lines_per_column as u16)
                                                                 && line.line_type == DataType::Lyric {
                                                                 lines_on_column = 0;
                                                                 main_row = main_row.push(new_column);
@@ -349,7 +420,7 @@ impl ApplicationState {
                                 } else {
                                         Column::new()
                                 }.padding(self.main_padding)
-                        }, 
+                        },
                         Screen::Search => {
                                 match &self.search_state {
                                         SearchState::Finished(s) => {
@@ -446,7 +517,6 @@ impl ApplicationState {
                                                                         Space::new(30, 0),
                                                                         ].height(row_height).align_y(Center));
                                                                 }
-                                                                
                                                         }
                                                         column![container(
                                                                 scrollable(row![
@@ -460,7 +530,6 @@ impl ApplicationState {
                                         _ => Column::new()
                                 }.align_x(Center)
                                 .width(self.size.width - 2.0 * self.main_padding)
-                                
                         },
                         Screen::Settings => {
                                 column![scrollable(column![
@@ -476,6 +545,10 @@ impl ApplicationState {
                                                 row![
                                                         checkbox("Notify about updates", self.notify_about_updates)
                                                                 .on_toggle(Message::ToggleUpdateNotification),
+                                                ].align_y(Center),
+                                                row![
+                                                        checkbox("Log played songs locally", self.log_played_songs)
+                                                                .on_toggle(Message::TogglePlayedLog),
                                                 ].align_y(Center),
                                         ].spacing(20)
                                         .align_x(Center),
@@ -547,7 +620,6 @@ impl ApplicationState {
                                                                 .size(self.tab_text_size as f32)
                                                                 .font(Font::MONOSPACE),
                                                 ],
-                                                
                                         ].spacing(20)
                                         .align_x(Center),
                                         column![
@@ -580,7 +652,6 @@ impl ApplicationState {
                                                                         .size(12),
                                                         ]),
                                                 ],
-                                                
                                                 Space::new(0, 5),
                                                 rich_text([span(
                                                         format!("Coral-Chords v{}  Copyright (C) 2025  Linus Tibert", env!("CARGO_PKG_VERSION")))
@@ -606,44 +677,35 @@ impl ApplicationState {
                                 )]
                         }
                 };
-                
-                let bar_button = |label| {
-                        button(row![
-                                        label
-                                ].align_y(Center))
-                                .padding([4, 12])
-                };
+
+                let bar_button = |label| button(row![label].align_y(Center)).padding([4, 12]);
                 // The header bar containing basic controls
                 let controls: Row<Message> = match self.screen {
-                        Screen::Tabs => { row![
-                                        bar_button("Tab")
-                                                .on_press(Message::TabsPage),
-                                        bar_button("Search")
-                                                .on_press(Message::SearchPage)
-                                                .style(button::secondary),
-                                        bar_button("Settings")
-                                                .on_press(Message::SettingsPage)
-                                                .style(button::secondary),
-                                        Space::new(100, 0),
-                                        bar_button("Edit...")
-                                                .on_press(Message::OpenTabFile),
-                                        Space::new(10, 0),
-                                        bar_button("Reload")
-                                                .on_press(Message::Reload),
-                                        Space::new(10, 0),
-                                        toggler(self.playing)
-                                                .label("Play")
-                                                .on_toggle(Message::PlayingToggled)
-                                ].align_y(Center)
-                        },
+                        Screen::Tabs => row![
+                                bar_button("Tab").on_press(Message::TabsPage),
+                                bar_button("Search")
+                                        .on_press(Message::SearchPage)
+                                        .style(button::secondary),
+                                bar_button("Settings")
+                                        .on_press(Message::SettingsPage)
+                                        .style(button::secondary),
+                                Space::new(100, 0),
+                                bar_button("Edit...").on_press(Message::OpenTabFile),
+                                Space::new(10, 0),
+                                bar_button("Reload").on_press(Message::Reload),
+                                Space::new(10, 0),
+                                toggler(self.playing)
+                                        .label("Play")
+                                        .on_toggle(Message::PlayingToggled)
+                        ]
+                        .align_y(Center),
                         Screen::Search => {
                                 let value = &self.search_value;
                                 row![
                                         bar_button("Tab")
                                                 .on_press(Message::TabsPage)
                                                 .style(button::secondary),
-                                        bar_button("Search")
-                                                .on_press(Message::SearchPage),
+                                        bar_button("Search").on_press(Message::SearchPage),
                                         bar_button("Settings")
                                                 .on_press(Message::SettingsPage)
                                                 .style(button::secondary),
@@ -651,31 +713,34 @@ impl ApplicationState {
                                         text_input("Search a tab...", value)
                                                 .on_input(Message::UpdateSearchBar)
                                                 .width(300),
-                                        bar_button("Go!")
-                                                .on_press(Message::SearchTabs),
+                                        bar_button("Go!").on_press(Message::SearchTabs),
                                         Space::new(10, 0),
-                                        bar_button("Clear")
-                                                .on_press(Message::ClearSearch),
+                                        bar_button("Clear").on_press(Message::ClearSearch),
                                         Space::new(40, 0),
-                                        combo_box(&self.tab_types, "Filter", self.search_filter.as_ref(), Message::ApplySearch)
-                                                .width(300),
-                                        bar_button("Reset")
-                                                .on_press(Message::ResetFilter),
-                                ].align_y(Center)
-                        },
-                        Screen::Settings => { row![
-                                        bar_button("Tab")
-                                                .on_press(Message::TabsPage)
-                                                .style(button::secondary),
-                                        bar_button("Search")
-                                                .on_press(Message::SearchPage)
-                                                .style(button::secondary),
-                                        bar_button("Settings")
-                                                .on_press(Message::SettingsPage),
-                                        Space::new(100, 0),
-                                ].align_y(Center)
-                        },
-                }.padding(10)
+                                        combo_box(
+                                                &self.tab_types,
+                                                "Filter",
+                                                self.search_filter.as_ref(),
+                                                Message::ApplySearch
+                                        )
+                                        .width(300),
+                                        bar_button("Reset").on_press(Message::ResetFilter),
+                                ]
+                                .align_y(Center)
+                        }
+                        Screen::Settings => row![
+                                bar_button("Tab")
+                                        .on_press(Message::TabsPage)
+                                        .style(button::secondary),
+                                bar_button("Search")
+                                        .on_press(Message::SearchPage)
+                                        .style(button::secondary),
+                                bar_button("Settings").on_press(Message::SettingsPage),
+                                Space::new(100, 0),
+                        ]
+                        .align_y(Center),
+                }
+                .padding(10)
                 .spacing(2);
 
                 // A bar to show messages to the user
@@ -683,47 +748,40 @@ impl ApplicationState {
                 for notification in self.notifications.clone() {
                         match notification {
                                 NotificationType::Info(n) => {
-                                        notifications = notifications.push(row![
-                                                text(n),
-                                        ])
-                                },
+                                        notifications = notifications.push(row![text(n),])
+                                }
                                 NotificationType::Warning(n) => {
-                                        notifications = notifications.push(row![
-                                                text(n).color(color![0xdf8e1d]),
-                                        ])
-                                },
+                                        notifications = notifications
+                                                .push(row![text(n).color(color![0xdf8e1d]),])
+                                }
                                 NotificationType::Error(n) => {
-                                        notifications = notifications.push(row![
-                                                text(n).color(color![0xfe640b]),
-                                        ])
-                                },
+                                        notifications = notifications
+                                                .push(row![text(n).color(color![0xfe640b]),])
+                                }
                                 NotificationType::Fatal(n) => {
                                         notifications = notifications.push(row![
                                                 text(n).color(color![0xe64553]),
                                                 Space::new(10, 0),
-                                                button("Close")
-                                                        .on_press(Message::CloseApp),
-                                        ].align_y(Center))
-                                },
+                                                button("Close").on_press(Message::CloseApp),
+                                        ]
+                                        .align_y(Center))
+                                }
                                 _ => (),
                         };
                 }
-                let message_bar: Row<Message> =
-                if !self.notifications.is_empty() {
+                let message_bar: Row<Message> = if !self.notifications.is_empty() {
                         row![
-                                button("Clear")
-                                        .on_press(Message::ClearNotifications),
+                                button("Clear").on_press(Message::ClearNotifications),
                                 Space::new(10, 0),
                                 notifications,
-                        ].padding(self.main_padding)
+                        ]
+                        .padding(self.main_padding)
                         .align_y(Center)
                 } else {
                         row![]
                 };
-                
 
                 column![controls, message_bar, contents]
-
         }
 
         fn subscription(&self) -> Subscription<Message> {
@@ -732,13 +790,12 @@ impl ApplicationState {
                 } else if self.playing {
                         Subscription::batch(vec![
                                 time::every(Duration::from_millis(200)).map(|_| Message::Update),
-                                event::listen().map(Message::EventOccurred)
+                                event::listen().map(Message::EventOccurred),
                         ])
                 } else {
                         event::listen().map(Message::EventOccurred)
                 }
         }
-
 
         pub fn update(&mut self, message: Message) {
                 // First parts are updating the UI
@@ -756,7 +813,10 @@ impl ApplicationState {
                         song_metadata = match player.get_metadata() {
                                 Ok(md) => Some(md),
                                 Err(e) => {
-                                        self.show_info(NotificationType::Error("Could not connect to D-Bus: ".to_string() + &e.to_string()));
+                                        self.show_info(NotificationType::Error(
+                                                "Could not connect to D-Bus: ".to_string()
+                                                        + &e.to_string(),
+                                        ));
                                         None
                                 }
                         };
@@ -764,9 +824,10 @@ impl ApplicationState {
                                 let song_uid: String = match song_metadata.track_id() {
                                         Some(id) => {
                                                 if id.to_string().contains("spotify") {
-                                                        id.to_string().replace("/com/spotify/track/", "")
-                                                        .replace("/", "")
-                                                        .replace(" ", "")
+                                                        id.to_string()
+                                                                .replace("/com/spotify/track/", "")
+                                                                .replace("/", "")
+                                                                .replace(" ", "")
                                                 } else {
                                                         "unknown".into()
                                                 }
@@ -775,24 +836,36 @@ impl ApplicationState {
                                 };
                                 let song_name: String = match &song_metadata.title() {
                                         Some(t) => t.to_string(),
-                                        None => "unknown".into()
+                                        None => "unknown".into(),
                                 };
                                 let song_artist: String = match &song_metadata.artists() {
                                         Some(a) => a[0].into(),
-                                        None => "unknown".into()
+                                        None => "unknown".into(),
                                 };
                                 if self.playing {
                                         if self.song_id_previoes_cycle != song_uid {
-                                                self.get_song_data_by_uid(&song_uid, 
-                                                        format!("{} {}", self.clean_search_query(&song_name), song_artist),
-                                                        true);
+                                                self.get_song_data_by_uid(
+                                                        &song_uid,
+                                                        format!(
+                                                                "{} {}",
+                                                                self.clean_search_query(&song_name),
+                                                                song_artist
+                                                        ),
+                                                        true,
+                                                );
                                         }
                                         self.song_id_previoes_cycle = song_uid.clone();
                                 }
                                 if self.song_id_display != song_uid {
-                                        self.get_song_data_by_uid(&song_uid,
-                                                format!("{} {}", self.clean_search_query(&song_name), song_artist),
-                                                false);
+                                        self.get_song_data_by_uid(
+                                                &song_uid,
+                                                format!(
+                                                        "{} {}",
+                                                        self.clean_search_query(&song_name),
+                                                        song_artist
+                                                ),
+                                                false,
+                                        );
                                 }
                                 self.current_song_uid = song_uid;
                         }
@@ -802,15 +875,17 @@ impl ApplicationState {
                 if let Ok(v) = self.channel.1.try_recv() {
                         match v {
                                 ThreadData::Notification(n) => self.notifications.push(n),
-                                ThreadData::SearchResults(s) => self.search_state = SearchState::Finished(s),
+                                ThreadData::SearchResults(s) => {
+                                        self.search_state = SearchState::Finished(s)
+                                }
                                 ThreadData::DownloadFinishedSignal => {
                                         if self.playing {
                                                 self.screen = Screen::Tabs;
-                                        }  
+                                        }
                                 }
                                 _ => (),
                         }
-                } 
+                }
 
                 // Execute commands associated to messages
                 match message {
@@ -824,87 +899,119 @@ impl ApplicationState {
                         Message::ClearSearch => self.search_value = "".into(),
                         Message::ClearNotifications => self.notifications = vec![],
                         Message::CloseApp => exit(1),
-                        Message::DownloadTab(url) => self.get_tab(url, self.current_song_uid.to_owned()),
+                        Message::DownloadTab(url) => {
+                                self.get_tab(url, self.current_song_uid.to_owned())
+                        }
                         Message::ApplySearch(f) => {
                                 self.search_filter = Some(f);
-                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(Some(f)));
-                        },
+                                let _ = self
+                                        .config
+                                        .set("search_filter", Value::DataSetTypeOption(Some(f)));
+                        }
                         Message::ResetFilter => {
-                                let _ = self.config.set("search_filter", Value::DataSetTypeOption(None));
+                                let _ = self
+                                        .config
+                                        .set("search_filter", Value::DataSetTypeOption(None));
                                 self.search_filter = None;
-                        },
+                        }
                         Message::ApplyTheme(t) => {
                                 let _ = self.config.set("theme", Value::String(t.to_string()));
                                 self.selected_theme = Some(t.clone());
                                 self.theme = t;
-                        },
+                        }
                         Message::ApplySearchDepth(d) => {
                                 self.search_depth = d;
                                 let _ = self.config.set("search_depth", Value::Int(d as i64));
-                        },
+                        }
                         Message::SetTabLineHeight(h) => {
                                 self.tab_text_size = h;
                                 let _ = self.config.set("tab_text_size", Value::Int(h as i64));
                         }
                         Message::SetDownloadableOnly(s) => {
                                 self.only_downloadable_results = s;
-                                let _ = self.config.set("only_downloadable_results", Value::Bool(s));
-                        },
+                                let _ = self
+                                        .config
+                                        .set("only_downloadable_results", Value::Bool(s));
+                        }
                         Message::RemoveEmptyLines(s) => {
                                 self.remove_empty_lines = s;
                                 let _ = self.config.set("remove_empty_lines", Value::Bool(s));
-                        },
+                        }
                         Message::ToggleUpdateNotification(s) => {
                                 self.notify_about_updates = s;
                                 let _ = self.config.set("notify_about_updates", Value::Bool(s));
-                        },
+                        }
+                        Message::TogglePlayedLog(s) => {
+                                self.log_played_songs = s;
+                                let _ = self.config.set("log_played_songs", Value::Bool(s));
+                        }
                         Message::RemoveFirstLines(s) => {
                                 self.remove_first_lines = s;
                                 let _ = self.config.set("remove_first_lines", Value::Bool(s));
-                        },
+                        }
                         Message::CleanQueries(s) => {
                                 self.clean_queries = s;
                                 let _ = self.config.set("clean_queries", Value::Bool(s));
-                        },
+                        }
                         Message::ChordColourChange(c) => {
-                                let colour = Color::parse(&c).unwrap_or(Color::parse("#fe640b").unwrap());
+                                let colour = Color::parse(&c)
+                                        .unwrap_or(Color::parse("#fe640b").unwrap());
                                 let _ = self.config.set("chord_colour", Value::String(c.clone()));
                                 self.chord_colour = colour;
                                 self.chord_colour_text = c;
-                        },
+                        }
                         Message::Reload => {
                                 self.song_id_display = String::new();
-                        },
+                        }
                         Message::HeaderColourChange(c) => {
-                                let colour = Color::parse(&c).unwrap_or(Color::parse("#dc8a78").unwrap());
+                                let colour = Color::parse(&c)
+                                        .unwrap_or(Color::parse("#dc8a78").unwrap());
                                 let _ = self.config.set("header_colour", Value::String(c.clone()));
                                 self.header_colour = colour;
                                 self.header_colour_text = c;
-                        },
+                        }
                         Message::OpenTabFile => {
-                                if let Err(e) = opener::open(std::path::Path::new(&self.current_path)) {
-                                        self.show_info(NotificationType::Error(format!("Could not open file: {}", e)));
+                                if let Err(e) =
+                                        opener::open(std::path::Path::new(&self.current_path))
+                                {
+                                        self.show_info(NotificationType::Error(format!(
+                                                "Could not open file: {}",
+                                                e
+                                        )));
                                 }
-                        },
+                        }
                         Message::OpenLicence => {
-                                if let Err(e) = opener::open(std::path::Path::new("https://www.gnu.org/licenses/agpl-3.0.en.html")) {
-                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e)));
+                                if let Err(e) = opener::open(std::path::Path::new(
+                                        "https://www.gnu.org/licenses/agpl-3.0.en.html",
+                                )) {
+                                        self.show_info(NotificationType::Error(format!(
+                                                "Could not open web link: {}",
+                                                e
+                                        )));
                                 }
-                        },
+                        }
                         Message::OpenReadme => {
-                                if let Err(e) = opener::open(std::path::Path::new("https://github.com/Lich-Corals/coral-chords")) {
-                                        self.show_info(NotificationType::Error(format!("Could not open web link: {}", e)));
+                                if let Err(e) = opener::open(std::path::Path::new(
+                                        "https://github.com/Lich-Corals/coral-chords",
+                                )) {
+                                        self.show_info(NotificationType::Error(format!(
+                                                "Could not open web link: {}",
+                                                e
+                                        )));
                                 }
-                        },
+                        }
                         Message::EventOccurred(e) => match e {
-                                Event::Window(window::Event::Opened { position: _, size: s }) => {
+                                Event::Window(window::Event::Opened {
+                                        position: _,
+                                        size: s,
+                                }) => {
                                         self.size = s;
                                         self.bar_height = self.size.height / 20.0;
-                                },
+                                }
                                 Event::Window(window::Event::Resized(s)) => {
                                         self.size = s;
                                         self.bar_height = self.size.height / 20.0;
-                                },
+                                }
                                 _ => (),
                         },
                         _ => (),
@@ -917,18 +1024,19 @@ impl ApplicationState {
                         let split_markers: Vec<&str> = vec![" - ", " / ", " ("];
                         for split_marker in split_markers {
                                 if query.contains(split_marker) {
-                                        return query.split(split_marker).collect::<Vec<&str>>()[0].to_string()
+                                        return query.split(split_marker).collect::<Vec<&str>>()[0]
+                                                .to_string();
                                 }
                         }
                 }
-                query.to_owned()        
+                query.to_owned()
         }
 
         /// Show info to the user
-        /// 
+        ///
         /// This is most likely not final.
         /// ...Those will show popups or similar using GUI instead of println!()
-        /// 
+        ///
         /// Might need to be changed to accept data from threads
         pub fn show_info(&mut self, content: NotificationType) {
                 self.notifications.push(content);
@@ -943,20 +1051,23 @@ impl ApplicationState {
                         Value::Int(d) => d as u8,
                         _ => 2,
                 };
-                thread::spawn(move || match network::search(search_query.as_str(), search_depth) {
+                thread::spawn(
+                        move || {
+                                match network::search(search_query.as_str(), search_depth) {
                         Ok(s) => {
-                                if let Err(e) = tx.send(ThreadData::SearchResults(s)) 
+                                if let Err(e) = tx.send(ThreadData::SearchResults(s))
                                         && let Err(e) = tx.send(ThreadData::Notification(
                                                 NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
                                         println!("Could not send message: {}", e);
                                 }
-                                
                         },
                         Err(e) => if let Err(e) = tx.send(ThreadData::Notification(
                                         NotificationType::Error("Something went wrong getting the search results: ".to_string() + &e))) {
                                 println!("Could not send message: {}", e);
                         },
-                });
+                }
+                        },
+                );
         }
 
         /// Download and store a tab locally
@@ -966,25 +1077,38 @@ impl ApplicationState {
                 thread::spawn(move || match network::get_tab(&url) {
                         Ok(s) => match store_song(s, song_uid.as_str()) {
                                 Ok(_) => {
-                                        if let Err(e) = tx.send(ThreadData::DownloadFinishedSignal) {
+                                        if let Err(e) = tx.send(ThreadData::DownloadFinishedSignal)
+                                        {
                                                 println!("Could not download-finish-signal: {}", e);
                                         }
-                                },
+                                }
                                 Err(e) => {
-                                                if let Err(e) = tx.send(ThreadData::Notification(
-                                                        NotificationType::Error("Could not store song to local file: ".to_string() + &e.to_string()))) {
+                                        if let Err(e) = tx.send(ThreadData::Notification(
+                                                NotificationType::Error(
+                                                        "Could not store song to local file: "
+                                                                .to_string()
+                                                                + &e.to_string(),
+                                                ),
+                                        )) {
                                                 println!("Could not send message: {}", e);
                                         }
-                                },
+                                }
                         },
-                        Err(e) => if let Err(e) = tx.send(ThreadData::Notification(
-                                        NotificationType::Error("Something went wrong downloading the tab: ".to_string() + &e))) {
-                                println!("Could not send message: {}", e);
-                        },
+                        Err(e) => {
+                                if let Err(e) =
+                                        tx.send(ThreadData::Notification(NotificationType::Error(
+                                                "Something went wrong downloading the tab: "
+                                                        .to_string()
+                                                        + &e,
+                                        )))
+                                {
+                                        println!("Could not send message: {}", e);
+                                }
+                        }
                 });
         }
 
-        /// Write a given Song's lines to UI 
+        /// Write a given Song's lines to UI
         pub fn song_to_ui(&mut self, song: Song, song_uid: String) {
                 self.song_id_display = song_uid;
                 self.current_tab = song;
@@ -1003,8 +1127,15 @@ impl ApplicationState {
                                 if self.playing {
                                         if p.is_file() {
                                                 match load_song(song_uid) {
-                                                        Ok(s) => self.song_to_ui(s, song_uid.to_owned()),
-                                                        Err(e) => self.show_info(NotificationType::Error("Could not load song file: ".to_string() + &e.to_string())),
+                                                        Ok(s) => self
+                                                                .song_to_ui(s, song_uid.to_owned()),
+                                                        Err(e) => self.show_info(
+                                                                NotificationType::Error(
+                                                                        "Could not load song file: "
+                                                                                .to_string()
+                                                                                + &e.to_string(),
+                                                                ),
+                                                        ),
                                                 }
                                         } else if ask {
                                                 self.screen = Screen::Search;
@@ -1013,7 +1144,9 @@ impl ApplicationState {
                                         }
                                 }
                         }
-                        Err(e) => self.show_info(NotificationType::Fatal("Could not get tab path: ".to_string() + &e.to_string())),
+                        Err(e) => self.show_info(NotificationType::Fatal(
+                                "Could not get tab path: ".to_string() + &e.to_string(),
+                        )),
                 }
         }
 }
@@ -1035,19 +1168,27 @@ fn get_config_object() -> (CoralConfig, Option<NotificationType>) {
 }
 
 fn get_selected_theme(config_object: &mut CoralConfig) -> Theme {
-        let selected = if let Value::String(t) = config_object.get("theme"){t}else{"".into()};
+        let selected = if let Value::String(t) = config_object.get("theme") {
+                t
+        } else {
+                "".into()
+        };
         for theme in Theme::ALL {
                 if selected == theme.to_string().as_str() {
-                        return theme.to_owned()
+                        return theme.to_owned();
                 }
         }
         Theme::Dark
 }
 
 fn main() {
-        let _ = iced::application("Coral-Chords", ApplicationState::update, ApplicationState::view)
-                .centered()
-                .theme(ApplicationState::theme)
-                .subscription(ApplicationState::subscription)
-                .run();
+        let _ = iced::application(
+                "Coral-Chords",
+                ApplicationState::update,
+                ApplicationState::view,
+        )
+        .centered()
+        .theme(ApplicationState::theme)
+        .subscription(ApplicationState::subscription)
+        .run();
 }

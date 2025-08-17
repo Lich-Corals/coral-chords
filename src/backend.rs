@@ -152,6 +152,7 @@ pub mod formats {
                                         ("remove_first_lines".into(), Value::Bool(true)),
                                         ("clean_queries".into(), Value::Bool(true)),
                                         ("notify_about_updates".into(), Value::Bool(true)),
+                                        ("log_played_songs".into(), Value::Bool(true)),
                                 ]),
                         }
                 }
