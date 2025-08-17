@@ -1,3 +1,8 @@
+## [0.2.0]
+### Added
+- Local logging of played songs
+- Setting to disable the feature above
+
 ## [0.1.4]
 ### Added
 - Notification if newer version of package is available on crates.io
