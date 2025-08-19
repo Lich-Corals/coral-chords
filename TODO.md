@@ -5,7 +5,7 @@
 - Automatically detect the start and end of multi line tab rows and don't split them
 - pause/play/rewind control from GUI using MPRIS
     - Automatic pause/play with countdown (OPTIONAL)
-- Recolour optional metadata at the start of songs
+- [DONE] Recolour optional metadata at the start of songs
 - [DONE] Played song log (OPTIONAL)
 - [DONE] Make settings scrollable
 - [DONE] Inform user about newer available version

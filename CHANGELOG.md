@@ -1,3 +1,7 @@
+## [0.2.1]
+### Added
+- A setting to change the colour of the optional metadata at the top of the displayed tab
+
 ## [0.2.0]
 ### Added
 - Local logging of played songs
