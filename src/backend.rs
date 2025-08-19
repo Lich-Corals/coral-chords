@@ -194,6 +194,7 @@ pub mod formats {
                                         ("clean_queries".into(), Value::Bool(true)),
                                         ("notify_about_updates".into(), Value::Bool(true)),
                                         ("log_played_songs".into(), Value::Bool(true)),
+                                        ("metadata_colour".into(), Value::String("#209fb5".into())),
                                 ]),
                         }
                 }

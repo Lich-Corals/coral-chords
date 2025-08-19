@@ -118,6 +118,10 @@ struct ApplicationState {
         start_time_stamp: u64,
         /// Whether the currently playing song was already added to the log file
         song_in_log: bool,
+        /// the currently selected metadata colour
+        metadata_colour: Color,
+        /// The metadata colour input field's text
+        metadata_colour_text: String,
 }
 
 impl Default for ApplicationState {
@@ -188,6 +192,12 @@ impl Default for ApplicationState {
                 } else {
                         "#fe640b".into()
                 };
+                let loaded_metadata_colour =
+                        if let Value::String(v) = config_result.0.get("metadata_colour") {
+                                v
+                        } else {
+                                "#209fb5".into()
+                        };
                 let loaded_header_colour =
                         if let Value::String(v) = config_result.0.get("header_colour") {
                                 v
@@ -198,6 +208,8 @@ impl Default for ApplicationState {
                         Color::parse(&loaded_colour).unwrap_or(Color::parse("fe640b").unwrap());
                 let header_colour = Color::parse(&loaded_header_colour)
                         .unwrap_or(Color::parse("dc8a78").unwrap());
+                let metadata_colour = Color::parse(&loaded_metadata_colour)
+                        .unwrap_or(Color::parse("209fb5").unwrap());
                 let clean_queries = if let Value::Bool(v) = config_result.0.get("clean_queries") {
                         v
                 } else {
@@ -260,6 +272,8 @@ impl Default for ApplicationState {
                         current_song_length: 0,
                         start_time_stamp: 0,
                         song_in_log: true,
+                        metadata_colour,
+                        metadata_colour_text: loaded_metadata_colour,
                 }
         }
 }
@@ -325,6 +339,8 @@ enum Message {
         ToggleUpdateNotification(bool),
         /// Whether to log the played songs to a local file or not
         TogglePlayedLog(bool),
+        /// Update the colour of the metadata section
+        RecolourMetadata(String),
 }
 
 #[derive(Default, PartialEq)]
@@ -360,6 +376,7 @@ impl ApplicationState {
                                                 if let Some(d) = &d.capo {
                                                         new_column = new_column.push(row![
                                                                 text(format!("Capo: {}", d.clone()))
+                                                                        .color(self.metadata_colour)
                                                                         .font(Font::MONOSPACE)
                                                                         .size(self.tab_text_size as f32)
                                                         ].height(self.tab_text_size as f32));
@@ -367,6 +384,7 @@ impl ApplicationState {
                                                 if let Some(d) = &d.tuning {
                                                         new_column = new_column.push(row![
                                                                 text(format!("Tuning: {}", d.clone()))
+                                                                        .color(self.metadata_colour)
                                                                         .font(Font::MONOSPACE)
                                                                         .size(self.tab_text_size as f32)
                                                         ].height(self.tab_text_size as f32));
@@ -600,6 +618,13 @@ impl ApplicationState {
                                                                 .width(300),
                                                 ].align_y(Center),
                                                 row![
+                                                        text("Metadata colour:"),
+                                                        Space::new(10, 0),
+                                                        text_input("#209fb5", &self.metadata_colour_text)
+                                                                .on_input(Message::RecolourMetadata)
+                                                                .width(300),
+                                                ].align_y(Center),
+                                                row![
                                                         text("Header colour:"),
                                                         Space::new(10, 0),
                                                         text_input("#dc8a78", &self.header_colour_text)
@@ -615,6 +640,10 @@ impl ApplicationState {
                                                 ].align_y(Center),
                                                 column![
                                                         Space::new(0, 20),
+                                                        text("Some matadata\n ".to_string())
+                                                                .size(self.tab_text_size as f32)
+                                                                .font(Font::MONOSPACE)
+                                                                .color(self.metadata_colour),
                                                         rich_text([span(
                                                                 "[Section header]")
                                                                         .font(Font {
@@ -993,6 +1022,15 @@ impl ApplicationState {
                         Message::CleanQueries(s) => {
                                 self.clean_queries = s;
                                 let _ = self.config.set("clean_queries", Value::Bool(s));
+                        }
+                        Message::RecolourMetadata(c) => {
+                                let colour = Color::parse(&c)
+                                        .unwrap_or(Color::parse("#209fb5").unwrap());
+                                let _ = self
+                                        .config
+                                        .set("metadata_colour", Value::String(c.clone()));
+                                self.metadata_colour = colour;
+                                self.metadata_colour_text = c;
                         }
                         Message::ChordColourChange(c) => {
                                 let colour = Color::parse(&c)
