@@ -888,10 +888,16 @@ impl ApplicationState {
                                                                 .replace("/", "")
                                                                 .replace(" ", "")
                                                 } else {
+                                                        self.show_info(NotificationType::Error("This song doesn't have a recognized song ID format.".into()));
                                                         "unknown".into()
                                                 }
                                         }
-                                        None => "unknown".into(),
+                                        None => {
+                                                self.show_info(NotificationType::Error(
+                                                        "Could not get song ID.".into(),
+                                                ));
+                                                "unknown".into()
+                                        }
                                 };
                                 let song_name: String = match &song_metadata.title() {
                                         Some(t) => t.to_string(),
