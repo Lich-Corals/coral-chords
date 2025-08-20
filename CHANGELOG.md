@@ -1,3 +1,9 @@
+## [0.2.2]
+### Added
+- Error messages if the song ID is available or in an invalid format
+### Fixed
+- Possible wrong player selection if another MPRIS player is running (e.g.: Youtube in Firefox)
+
 ## [0.2.1]
 ### Added
 - A setting to change the colour of the optional metadata at the top of the displayed tab
