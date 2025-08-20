@@ -134,16 +134,35 @@ impl Default for ApplicationState {
                 }
 
                 let player = match PlayerFinder::new() {
-                        Ok(pf) => match pf.find_active() {
-                                Ok(p) => Some(p),
-                                Err(e) => {
+                        Ok(pf) => {
+                                let player_option: Option<Player> = match pf.iter_players() {
+                                        Ok(pli) => {
+                                                let mut spotify_player: Option<Player> = None;
+                                                for player in pli {
+                                                        if let Ok(pl) = player
+                                                                && pl.bus_name() == "org.mpris.MediaPlayer2.spotify" {
+                                                                        spotify_player = Some(pl);
+                                                                        break;
+                                                        }
+                                                }
+                                                spotify_player
+                                        }
+                                        Err(error) => {
+                                                notifications.push(NotificationType::Fatal(
+                                                        format!(
+                                                        "Could not iterate players: {error:?}"
+                                                ),
+                                                ));
+                                                None
+                                        }
+                                };
+                                if player_option.is_none() {
                                         notifications.push(NotificationType::Fatal(
-                                                "Could not find any media player: ".to_string()
-                                                        + &e.to_string(),
+                                                "Could not find Spotify player.".into(),
                                         ));
-                                        None
                                 }
-                        },
+                                player_option
+                        }
                         Err(e) => {
                                 notifications.push(NotificationType::Fatal(
                                         "Could not connect to D-Bus: ".to_string() + &e.to_string(),
