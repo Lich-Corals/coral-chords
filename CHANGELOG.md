@@ -1,3 +1,7 @@
+## [0.2.3]
+### Fixed
+- Not switching back to tab view if downloaded song is played and search view active
+
 ## [0.2.2]
 ### Added
 - Error messages if the song ID is available or in an invalid format
