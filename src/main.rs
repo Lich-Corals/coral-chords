@@ -917,6 +917,7 @@ impl ApplicationState {
                                         if self.song_id_previoes_cycle != song_uid {
                                                 self.start_time_stamp = current_time();
                                                 self.song_in_log = false;
+                                                self.screen = Screen::Tabs;
                                                 self.get_song_data_by_uid(
                                                         &song_uid,
                                                         format!(
