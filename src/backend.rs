@@ -195,6 +195,11 @@ pub mod formats {
                                         ("notify_about_updates".into(), Value::Bool(true)),
                                         ("log_played_songs".into(), Value::Bool(true)),
                                         ("metadata_colour".into(), Value::String("#209fb5".into())),
+                                        (
+                                                "renew_strings_interval".into(),
+                                                Value::Int(-60 * 60 * 24 * 31 * 3), // About three months; negative to disable feature by default.
+                                        ),
+                                        ("last_string_renewal".into(), Value::Int(0)),
                                 ]),
                         }
                 }

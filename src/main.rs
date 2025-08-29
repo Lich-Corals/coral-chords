@@ -28,7 +28,7 @@ use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
 use mpris::{Metadata, Player, PlayerFinder};
 use std::process::exit;
 use std::sync::mpsc::{self};
-use std::thread::{self};
+use std::thread::{self, current};
 use std::vec;
 use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 
@@ -122,6 +122,12 @@ struct ApplicationState {
         metadata_colour: Color,
         /// The metadata colour input field's text
         metadata_colour_text: String,
+        /// The interval in which the user is reminded of string renewal
+        ///
+        /// This value is negative if the setting is disabled.
+        renew_strings_interval: i64,
+        /// The last time the user has changed their strings
+        last_string_renewal: i64,
 }
 
 impl Default for ApplicationState {
@@ -200,6 +206,19 @@ impl Default for ApplicationState {
                                 v
                         } else {
                                 false
+                        };
+                let last_string_renewal =
+                        if let Value::Int(v) = config_result.0.get("last_string_renewal") {
+                                v
+                        } else {
+                                0
+                        };
+
+                let renew_strings_interval =
+                        if let Value::Int(v) = config_result.0.get("renew_strings_interval") {
+                                v
+                        } else {
+                                -60 * 60 * 24 * 31 * 3 // This is about three months; negative to disable feature by default.
                         };
                 let tab_text_size = if let Value::Int(v) = config_result.0.get("tab_text_size") {
                         v
@@ -293,6 +312,7 @@ impl Default for ApplicationState {
                         song_in_log: true,
                         metadata_colour,
                         metadata_colour_text: loaded_metadata_colour,
+                        renew_strings_interval,
                 }
         }
 }
@@ -360,6 +380,10 @@ enum Message {
         TogglePlayedLog(bool),
         /// Update the colour of the metadata section
         RecolourMetadata(String),
+        /// Update the string renewal interval time
+        UpdateStringRenewalInterval(u32),
+        /// Enable/disable the string renewal reminder
+        ToggleStringRenewalReminder(bool),
 }
 
 #[derive(Default, PartialEq)]
@@ -597,6 +621,18 @@ impl ApplicationState {
                                                 row![
                                                         checkbox("Log played songs locally", self.log_played_songs)
                                                                 .on_toggle(Message::TogglePlayedLog),
+                                                ].align_y(Center),
+                                                row![
+                                                        checkbox("Remind me to replace my strings", self.renew_strings_interval > 0)
+                                                                .on_toggle(Message::ToggleStringRenewalReminder),
+                                                ].align_y(Center),
+                                                row![
+                                                        text(format!("String reminder interval: {:02}mo, {:02}d",
+                                                                self.renew_strings_interval.abs() / (60*60*24*31),
+                                                                (self.renew_strings_interval.abs() % (60*60*24*31)) / (60*60*24))),
+                                                        Space::new(10, 0),
+                                                        slider(1..=12*31, (self.renew_strings_interval.abs() / (60*60*24)) as u32, Message::UpdateStringRenewalInterval)
+                                                                .width(300),
                                                 ].align_y(Center),
                                         ].spacing(20)
                                         .align_x(Center),
@@ -1014,6 +1050,30 @@ impl ApplicationState {
                                 let _ = self.config.set("theme", Value::String(t.to_string()));
                                 self.selected_theme = Some(t.clone());
                                 self.theme = t;
+                        }
+                        Message::ToggleStringRenewalReminder(s) => {
+                                if !s {
+                                        self.renew_strings_interval =
+                                                -self.renew_strings_interval.abs();
+                                } else {
+                                        self.renew_strings_interval =
+                                                self.renew_strings_interval.abs();
+                                }
+                                let _ = self.config.set(
+                                        "renew_strings_interval",
+                                        Value::Int(self.renew_strings_interval),
+                                );
+                        }
+                        Message::UpdateStringRenewalInterval(i) => {
+                                if self.renew_strings_interval > 0 {
+                                        self.renew_strings_interval = (i as i64) * 60 * 60 * 24;
+                                } else {
+                                        self.renew_strings_interval = -((i as i64) * 60 * 60 * 24);
+                                }
+                                let _ = self.config.set(
+                                        "renew_strings_interval",
+                                        Value::Int(self.renew_strings_interval),
+                                );
                         }
                         Message::ApplySearchDepth(d) => {
                                 self.search_depth = d;
