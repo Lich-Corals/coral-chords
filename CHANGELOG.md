@@ -1,3 +1,7 @@
+## [0.3.0]
+### Added
+- An optional feature to remind the user of replacing their instrument's strings regularly
+
 ## [0.2.3]
 ### Fixed
 - Not switching back to tab view if downloaded song is played and search view active
