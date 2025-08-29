@@ -116,6 +116,8 @@ pub mod formats {
                 Error(String),
                 /// An error which will close the application after being read.
                 Fatal(String),
+                /// The strings have to be changed.
+                RenewStrings(String),
         }
 
         impl fmt::Display for NotificationType {

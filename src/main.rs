@@ -28,7 +28,7 @@ use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
 use mpris::{Metadata, Player, PlayerFinder};
 use std::process::exit;
 use std::sync::mpsc::{self};
-use std::thread::{self, current};
+use std::thread::{self};
 use std::vec;
 use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 
@@ -213,7 +213,6 @@ impl Default for ApplicationState {
                         } else {
                                 0
                         };
-
                 let renew_strings_interval =
                         if let Value::Int(v) = config_result.0.get("renew_strings_interval") {
                                 v
@@ -273,6 +272,14 @@ impl Default for ApplicationState {
                         ));
                 }
 
+                if renew_strings_interval > 0
+                        && renew_strings_interval + last_string_renewal <= current_time() as i64
+                {
+                        notifications.push(NotificationType::RenewStrings(
+                                "Your strings should be renewed!".into(),
+                        ));
+                }
+
                 ApplicationState {
                         screen: Screen::default(),
                         theme: get_selected_theme(&mut config_result.0),
@@ -313,6 +320,7 @@ impl Default for ApplicationState {
                         metadata_colour,
                         metadata_colour_text: loaded_metadata_colour,
                         renew_strings_interval,
+                        last_string_renewal,
                 }
         }
 }
@@ -384,6 +392,10 @@ enum Message {
         UpdateStringRenewalInterval(u32),
         /// Enable/disable the string renewal reminder
         ToggleStringRenewalReminder(bool),
+        /// Set the last string renewal time to the current time stamp
+        UpdateStringRenewalTime,
+        /// Add two weeks to the last string renewal time
+        AddToStringRenewalTime,
 }
 
 #[derive(Default, PartialEq)]
@@ -861,6 +873,18 @@ impl ApplicationState {
                                         ]
                                         .align_y(Center))
                                 }
+                                NotificationType::RenewStrings(n) => {
+                                        notifications = notifications.push(row![
+                                                button("Done")
+                                                        .on_press(Message::UpdateStringRenewalTime),
+                                                Space::new(10, 0),
+                                                button("Add 2 weeks")
+                                                        .on_press(Message::AddToStringRenewalTime),
+                                                Space::new(10, 0),
+                                                text(n).color(color![0xdf8e1d]),
+                                        ]
+                                        .align_y(Center))
+                                }
                                 _ => (),
                         };
                 }
@@ -1058,6 +1082,13 @@ impl ApplicationState {
                                 } else {
                                         self.renew_strings_interval =
                                                 self.renew_strings_interval.abs();
+                                        if self.last_string_renewal == 0 {
+                                                self.last_string_renewal = current_time() as i64;
+                                                let _ = self.config.set(
+                                                        "last_string_renewal",
+                                                        Value::Int(self.last_string_renewal),
+                                                );
+                                        }
                                 }
                                 let _ = self.config.set(
                                         "renew_strings_interval",
@@ -1074,6 +1105,26 @@ impl ApplicationState {
                                         "renew_strings_interval",
                                         Value::Int(self.renew_strings_interval),
                                 );
+                        }
+                        Message::AddToStringRenewalTime => {
+                                self.last_string_renewal += (60 * 60 * 24 * 14) as i64;
+                                let _ = self.config.set(
+                                        "last_string_renewal",
+                                        Value::Int(self.last_string_renewal),
+                                );
+                                self.show_info(NotificationType::Info(
+                                        "You will be reminded in 14 days.".to_string(),
+                                ));
+                        }
+                        Message::UpdateStringRenewalTime => {
+                                self.last_string_renewal = current_time() as i64;
+                                let _ = self.config.set(
+                                        "last_string_renewal",
+                                        Value::Int(current_time() as i64),
+                                );
+                                self.show_info(NotificationType::Info(
+                                        "String renewal noted.".to_string(),
+                                ));
                         }
                         Message::ApplySearchDepth(d) => {
                                 self.search_depth = d;
