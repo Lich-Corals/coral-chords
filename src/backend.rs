@@ -202,6 +202,7 @@ pub mod formats {
                                                 Value::Int(-60 * 60 * 24 * 31 * 3), // About three months; negative to disable feature by default.
                                         ),
                                         ("last_string_renewal".into(), Value::Int(0)),
+                                        ("first_launch".into(), Value::Bool(true)),
                                 ]),
                         }
                 }

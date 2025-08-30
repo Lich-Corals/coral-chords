@@ -259,6 +259,19 @@ impl Default for ApplicationState {
                                 true
                         };
 
+                let first_launch = if let Value::Bool(v) = config_result.0.get("first_launch") {
+                        v
+                } else {
+                        true
+                };
+                let screen: Screen;
+                if first_launch {
+                        screen = Screen::Welcome;
+                        let _ = config_result.0.set("first_launch", Value::Bool(false));
+                } else {
+                        screen = Screen::default();
+                }
+
                 let log_played_songs =
                         if let Value::Bool(v) = config_result.0.get("log_played_songs") {
                                 v
@@ -281,7 +294,7 @@ impl Default for ApplicationState {
                 }
 
                 ApplicationState {
-                        screen: Screen::default(),
+                        screen,
                         theme: get_selected_theme(&mut config_result.0),
                         selected_theme: Some(get_selected_theme(&mut config_result.0)),
                         search_depth: search_depth as u8,
@@ -396,6 +409,8 @@ enum Message {
         UpdateStringRenewalTime,
         /// Add two weeks to the last string renewal time
         AddToStringRenewalTime,
+        /// Open the coffee page
+        OpenCoffeePage,
 }
 
 #[derive(Default, PartialEq)]
@@ -404,6 +419,7 @@ enum Screen {
         Tabs,
         Search,
         Settings,
+        Welcome,
 }
 
 #[derive(Debug, Default)]
@@ -423,6 +439,74 @@ impl ApplicationState {
         pub fn view(&self) -> Column<'_, Message> {
                 // The main contents of the window
                 let contents: Column<'_, Message> = match self.screen {
+                        Screen::Welcome => column![scrollable(column![
+                                column![
+                                                text(format!("Welcome to Coral-Chords v{}!", env!("CARGO_PKG_VERSION")))
+                                                        .size(25),
+                                                Space::new(0, 20),
+                                                row![
+                                                        text("Thank you for trying it out!"),
+                                                ],
+                                                Space::new(0, 10),
+                                                row![
+                                                        text("For usage and configuration instructions, take a look at "),
+                                                        rich_text([span(
+                                                                "the GitHub repository.")
+                                                                .link(Message::OpenReadme)
+                                                                .underline(true),
+                                                        ]),
+                                                ],
+                                                row![
+                                                        text("If you experience any problems or have a suggestion about the application, please submit an issue on the GitHub page above."),
+                                                ],
+                                                row![
+                                                        text!("And if you like this program, maybe think about "),
+                                                        rich_text([span(
+                                                                "leaving a tip.")
+                                                                .link(Message::OpenCoffeePage)
+                                                                .underline(true),
+                                                        ]),
+                                                ],
+                                                Space::new(0, 30),
+                                                row![
+                                                        rich_text([span(
+                                                                "Created with ")
+                                                                        .color(color!(0x696969))
+                                                                        .size(12),
+                                                        ]),
+                                                        rich_text([span(
+                                                                "❤️")
+                                                                        .color(color!(0x933030))
+                                                                        .size(12),
+                                                        ]),
+                                                        rich_text([span(
+                                                                " by Linus Tibert (Lich-Corals)")
+                                                                        .color(color!(0x696969))
+                                                                        .size(12),
+                                                        ]),
+                                                ],
+                                                Space::new(0, 5),
+                                                rich_text([span(
+                                                        format!("Coral-Chords v{}  Copyright (C) 2025  Linus Tibert", env!("CARGO_PKG_VERSION")))
+                                                                .color(color!(0x696969))
+                                                                .size(11),
+                                                ]),
+                                                rich_text([span(
+                                                        "GNU Affero General Public Licence v3")
+                                                                .color(color!(0x696969))
+                                                                .link(Message::OpenLicence)
+                                                                .size(11)
+                                                                .underline(true),
+                                                ]),
+                                                text("")
+                                                        .size(12),
+                                                text("")
+                                                        .size(12)
+                                        ].align_x(Center),
+                        ].padding(10)
+                                .spacing(20)
+                                .align_x(Center)
+                                .width(self.size.width - 2.0 * self.main_padding))],
                         Screen::Tabs => {
                                 if !self.current_tab.lines.is_empty() {
                                         let mut main_row: Row<'_, Message> = row![];
@@ -788,6 +872,19 @@ impl ApplicationState {
                 let bar_button = |label| button(row![label].align_y(Center)).padding([4, 12]);
                 // The header bar containing basic controls
                 let controls: Row<Message> = match self.screen {
+                        Screen::Welcome => row![
+                                bar_button("Tab")
+                                        .on_press(Message::TabsPage)
+                                        .style(button::secondary),
+                                bar_button("Search")
+                                        .on_press(Message::SearchPage)
+                                        .style(button::secondary),
+                                bar_button("Settings")
+                                        .on_press(Message::SettingsPage)
+                                        .style(button::secondary),
+                                Space::new(100, 0),
+                        ]
+                        .align_y(Center),
                         Screen::Tabs => row![
                                 bar_button("Tab").on_press(Message::TabsPage),
                                 bar_button("Search")
@@ -1199,6 +1296,16 @@ impl ApplicationState {
                         Message::OpenLicence => {
                                 if let Err(e) = opener::open(std::path::Path::new(
                                         "https://www.gnu.org/licenses/agpl-3.0.en.html",
+                                )) {
+                                        self.show_info(NotificationType::Error(format!(
+                                                "Could not open web link: {}",
+                                                e
+                                        )));
+                                }
+                        }
+                        Message::OpenCoffeePage => {
+                                if let Err(e) = opener::open(std::path::Path::new(
+                                        "https://buymeacoffee.com/lichcorals",
                                 )) {
                                         self.show_info(NotificationType::Error(format!(
                                                 "Could not open web link: {}",
