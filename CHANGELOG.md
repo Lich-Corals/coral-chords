@@ -1,3 +1,9 @@
+## [0.4.0]
+## Added
+- A welcome screen for new users
+## Fixed
+- Full tabs getting hidden if no chords are found
+
 ## [0.3.0]
 ### Added
 - An optional feature to remind the user of replacing their instrument's strings regularly

@@ -535,13 +535,15 @@ impl ApplicationState {
                                                 ].height(self.tab_text_size as f32));
                                         }
                                         let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
-                                        let mut lines_on_column = 3;
+                                        let mut lines_on_column = 3; // Is at three for the first
+                                                                     // column to make room for
+                                                                     // potential metadata entries
                                         let mut first_chords_found = false;
                                         for line in &self.current_tab.lines {
                                                 if line.line_type != DataType::Lyric {
                                                         first_chords_found = true;
                                                 }
-                                                if !self.remove_first_lines || first_chords_found {
+                                                if !self.remove_first_lines || first_chords_found || self.current_tab.basic_data.data_type == DataSetType::Tab {
                                                         lines_on_column += 1;
                                                         match line.line_type {
                                                                 DataType::Chord => {
