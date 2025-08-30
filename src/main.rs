@@ -534,7 +534,11 @@ impl ApplicationState {
                                                                 .size(self.tab_text_size as f32)
                                                 ].height(self.tab_text_size as f32));
                                         }
-                                        let max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
+                                        let mut max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
+                                        if self.current_tab.basic_data.data_type == DataSetType::Tab {
+                                            max_lines_per_column -= 5.0; // Remove five lines to
+                                                                       // prevent overflow of tabs
+                                        }
                                         let mut lines_on_column = 3; // Is at three for the first
                                                                      // column to make room for
                                                                      // potential metadata entries
@@ -578,10 +582,31 @@ impl ApplicationState {
                                                         }
                                                         if (lines_on_column >= max_lines_per_column as u16)
                                                                 && line.line_type == DataType::Lyric {
-                                                                lines_on_column = 0;
-                                                                main_row = main_row.push(new_column);
-                                                                new_column = column![];
-                                                        }
+                                                                if self.current_tab.basic_data.data_type == DataSetType::Tab {
+                                                                        println!("TAB: {}", line.text_data);
+                                                                        let mut hyphens_in_line: f32 = 0.0;
+                                                                        for character in line.text_data.chars() {
+                                                                                if character == '-' {
+                                                                                        hyphens_in_line += 1.0;
+                                                                                }
+                                                                        } 
+                                                                        println!("{}", hyphens_in_line);
+                                                                        if hyphens_in_line / line.text_data.len() as f32 <= 0.3 || line.text_data.len() < 5 {
+                                                                                // Only start a new
+                                                                                // column if amount
+                                                                                // of hyphens is <=
+                                                                                // 30% of the line
+                                                                                lines_on_column = 0;
+                                                                                main_row = main_row.push(new_column);
+                                                                                new_column = column![]; 
+                                                                                println!("BREAK");
+                                                                        }
+                                                                } else {
+                                                                        lines_on_column = 0;
+                                                                        main_row = main_row.push(new_column);
+                                                                        new_column = column![];
+                                                                }
+                                                         }
                                                 }
                                         }
                                         main_row = main_row.push(new_column);

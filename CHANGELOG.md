@@ -3,6 +3,7 @@
 - A welcome screen for new users
 ## Fixed
 - Full tabs getting hidden if no chords are found
+- Tab rows getting split if the page length limit is reached
 
 ## [0.3.0]
 ### Added
