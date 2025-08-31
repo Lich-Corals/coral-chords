@@ -1,3 +1,11 @@
+# Changelog
+
+## [0.4.1]
+## Updated
+- ug-scraper dependency
+## Fixed
+- Chord lines getting interpreted as section headers if square brackets were present in them
+
 ## [0.4.0]
 ## Added
 - A welcome screen for new users

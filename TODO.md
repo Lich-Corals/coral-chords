@@ -1,5 +1,6 @@
 ## To do
 
+- Self-updating
 - Add full UI control via keyboard
 - Replace some of the match parts with closures if possible
 - pause/play/rewind control from GUI using MPRIS
