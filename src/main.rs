@@ -16,6 +16,7 @@
 
 mod backend;
 mod ui_tabs;
+mod ui_welcome;
 
 use confy::ConfyError;
 use iced::time::{self, Duration};
@@ -40,6 +41,7 @@ use crate::backend::network::check_for_newer_version;
 use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
 use crate::backend::{network, system};
 use crate::ui_tabs::build_tabs_page;
+use crate::ui_welcome::build_welcome_page;
 
 /// The application's properties
 pub struct ApplicationState {
@@ -441,74 +443,7 @@ impl ApplicationState {
         pub fn view(&self) -> Column<'_, Message> {
                 // The main contents of the window
                 let contents: Column<'_, Message> = match self.screen {
-                        Screen::Welcome => column![scrollable(column![
-                                column![
-                                                text(format!("Welcome to Coral-Chords v{}!", env!("CARGO_PKG_VERSION")))
-                                                        .size(25),
-                                                Space::new(0, 20),
-                                                row![
-                                                        text("Thank you for trying it out!"),
-                                                ],
-                                                Space::new(0, 10),
-                                                row![
-                                                        text("For usage and configuration instructions, take a look at "),
-                                                        rich_text([span(
-                                                                "the GitHub repository.")
-                                                                .link(Message::OpenReadme)
-                                                                .underline(true),
-                                                        ]),
-                                                ],
-                                                row![
-                                                        text("If you experience any problems or have a suggestion about the application, please submit an issue on the GitHub page above."),
-                                                ],
-                                                row![
-                                                        text!("And if you like this program, maybe think about "),
-                                                        rich_text([span(
-                                                                "leaving a tip.")
-                                                                .link(Message::OpenCoffeePage)
-                                                                .underline(true),
-                                                        ]),
-                                                ],
-                                                Space::new(0, 30),
-                                                row![
-                                                        rich_text([span(
-                                                                "Created with ")
-                                                                        .color(color!(0x696969))
-                                                                        .size(12),
-                                                        ]),
-                                                        rich_text([span(
-                                                                "❤️")
-                                                                        .color(color!(0x933030))
-                                                                        .size(12),
-                                                        ]),
-                                                        rich_text([span(
-                                                                " by Linus Tibert (Lich-Corals)")
-                                                                        .color(color!(0x696969))
-                                                                        .size(12),
-                                                        ]),
-                                                ],
-                                                Space::new(0, 5),
-                                                rich_text([span(
-                                                        format!("Coral-Chords v{}  Copyright (C) 2025  Linus Tibert", env!("CARGO_PKG_VERSION")))
-                                                                .color(color!(0x696969))
-                                                                .size(11),
-                                                ]),
-                                                rich_text([span(
-                                                        "GNU Affero General Public Licence v3")
-                                                                .color(color!(0x696969))
-                                                                .link(Message::OpenLicence)
-                                                                .size(11)
-                                                                .underline(true),
-                                                ]),
-                                                text("")
-                                                        .size(12),
-                                                text("")
-                                                        .size(12)
-                                        ].align_x(Center),
-                        ].padding(10)
-                                .spacing(20)
-                                .align_x(Center)
-                                .width(self.size.width - 2.0 * self.main_padding))],
+                        Screen::Welcome => build_welcome_page(self),
                         Screen::Tabs => {
                                 if !self.current_tab.lines.is_empty() {
                                         build_tabs_page(self)
