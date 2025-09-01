@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod backend;
+mod ui_tabs;
 
 use confy::ConfyError;
 use iced::time::{self, Duration};
@@ -30,7 +31,7 @@ use std::process::exit;
 use std::sync::mpsc::{self};
 use std::thread::{self};
 use std::vec;
-use ug_scraper::types::{DataSetType, DataType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
+use ug_scraper::types::{DataSetType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
 
 use crate::backend::formats::{
         CoralConfig, LoggedSong, NotificationType, ThreadData, Value, TAB_DIR,
@@ -38,9 +39,10 @@ use crate::backend::formats::{
 use crate::backend::network::check_for_newer_version;
 use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
 use crate::backend::{network, system};
+use crate::ui_tabs::build_tabs_page;
 
 /// The application's properties
-struct ApplicationState {
+pub struct ApplicationState {
         screen: Screen,
         theme: Theme,
         /// The theme selected from the drop-down
@@ -340,7 +342,7 @@ impl Default for ApplicationState {
 
 /// Messages used to trigger actions from the UI
 #[derive(Debug, Clone)]
-enum Message {
+pub enum Message {
         /// Changed to tabs page
         TabsPage,
         /// Changed to search page
@@ -509,109 +511,7 @@ impl ApplicationState {
                                 .width(self.size.width - 2.0 * self.main_padding))],
                         Screen::Tabs => {
                                 if !self.current_tab.lines.is_empty() {
-                                        let mut main_row: Row<'_, Message> = row![];
-                                        let mut new_column = column![];
-                                        if let Some(d) = &self.current_tab.metadata {
-                                                if let Some(d) = &d.capo {
-                                                        new_column = new_column.push(row![
-                                                                text(format!("Capo: {}", d.clone()))
-                                                                        .color(self.metadata_colour)
-                                                                        .font(Font::MONOSPACE)
-                                                                        .size(self.tab_text_size as f32)
-                                                        ].height(self.tab_text_size as f32));
-                                                }
-                                                if let Some(d) = &d.tuning {
-                                                        new_column = new_column.push(row![
-                                                                text(format!("Tuning: {}", d.clone()))
-                                                                        .color(self.metadata_colour)
-                                                                        .font(Font::MONOSPACE)
-                                                                        .size(self.tab_text_size as f32)
-                                                        ].height(self.tab_text_size as f32));
-                                                }
-                                                new_column = new_column.push(row![
-                                                        text(" ")
-                                                                .font(Font::MONOSPACE)
-                                                                .size(self.tab_text_size as f32)
-                                                ].height(self.tab_text_size as f32));
-                                        }
-                                        let mut max_lines_per_column = 0.9 * ((self.size.height - self.bar_height - 2.0 * self.main_padding) / self.tab_text_size as f32);
-                                        if self.current_tab.basic_data.data_type == DataSetType::Tab {
-                                            max_lines_per_column -= 5.0; // Remove five lines to
-                                                                       // prevent overflow of tabs
-                                        }
-                                        let mut lines_on_column = 3; // Is at three for the first
-                                                                     // column to make room for
-                                                                     // potential metadata entries
-                                        let mut first_chords_found = false;
-                                        for line in &self.current_tab.lines {
-                                                if line.line_type != DataType::Lyric {
-                                                        first_chords_found = true;
-                                                }
-                                                if !self.remove_first_lines || first_chords_found || self.current_tab.basic_data.data_type == DataSetType::Tab {
-                                                        lines_on_column += 1;
-                                                        match line.line_type {
-                                                                DataType::Chord => {
-                                                                        new_column = new_column.push(row![
-                                                                                text(line.text_data.clone())
-                                                                                        .color(self.chord_colour)
-                                                                                        .font(Font::MONOSPACE)
-                                                                                        .size(self.tab_text_size as f32)
-                                                                        ].height(self.tab_text_size as f32));
-                                                                },
-                                                                DataType::Lyric => {
-                                                                        if !self.remove_empty_lines || !line.text_data.is_empty() {
-                                                                                new_column = new_column.push(row![
-                                                                                        text(line.text_data.clone())
-                                                                                                .font(Font::MONOSPACE)
-                                                                                                .size(self.tab_text_size as f32)
-                                                                                ].height(self.tab_text_size as f32));
-                                                                        }
-                                                                },
-                                                                DataType::SectionTitle => {
-                                                                        new_column = new_column.push(row![
-                                                                                rich_text([span(
-                                                                                        line.text_data.clone())
-                                                                                                .font(Font {
-                                                                                                        style: font::Style::Italic,
-                                                                                                        ..Font::MONOSPACE })
-                                                                                                .size(self.tab_text_size as f32)
-                                                                                                .color(self.header_colour),
-                                                                                ]),
-                                                                        ].height(self.tab_text_size as f32));
-                                                                }
-                                                        }
-                                                        if (lines_on_column >= max_lines_per_column as u16)
-                                                                && line.line_type == DataType::Lyric {
-                                                                if self.current_tab.basic_data.data_type == DataSetType::Tab {
-                                                                        println!("TAB: {}", line.text_data);
-                                                                        let mut hyphens_in_line: f32 = 0.0;
-                                                                        for character in line.text_data.chars() {
-                                                                                if character == '-' {
-                                                                                        hyphens_in_line += 1.0;
-                                                                                }
-                                                                        } 
-                                                                        println!("{}", hyphens_in_line);
-                                                                        if hyphens_in_line / line.text_data.len() as f32 <= 0.3 || line.text_data.len() < 5 {
-                                                                                // Only start a new
-                                                                                // column if amount
-                                                                                // of hyphens is <=
-                                                                                // 30% of the line
-                                                                                lines_on_column = 0;
-                                                                                main_row = main_row.push(new_column);
-                                                                                new_column = column![]; 
-                                                                                println!("BREAK");
-                                                                        }
-                                                                } else {
-                                                                        lines_on_column = 0;
-                                                                        main_row = main_row.push(new_column);
-                                                                        new_column = column![];
-                                                                }
-                                                         }
-                                                }
-                                        }
-                                        main_row = main_row.push(new_column);
-                                        column![main_row
-                                                .spacing(20)]
+                                        build_tabs_page(self)
                                 } else {
                                         Column::new()
                                 }.padding(self.main_padding)
