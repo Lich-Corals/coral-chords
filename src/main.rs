@@ -22,13 +22,10 @@ mod ui_welcome;
 
 use confy::ConfyError;
 use iced::time::{self, Duration};
-use iced::widget::{
-        button, checkbox, column, combo_box, container, rich_text, row, scrollable, slider, span,
-        text, text_input, toggler, Column, Row, Space,
-};
+use iced::widget::{button, column, combo_box, row, text, text_input, toggler, Column, Row, Space};
 use iced::Alignment::Center;
 use iced::{color, window};
-use iced::{event, font, Color, Event, Font, Size, Subscription, Theme};
+use iced::{event, Color, Event, Size, Subscription, Theme};
 use mpris::{Metadata, Player, PlayerFinder};
 use std::process::exit;
 use std::sync::mpsc::{self};
