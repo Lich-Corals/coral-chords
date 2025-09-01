@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.2]
+## Code-changes
+- Split off some UI-builders into separate files 
+
 ## [0.4.1]
 ## Updated
 - ug-scraper dependency
