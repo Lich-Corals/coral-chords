@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod backend;
+mod ui_search;
 mod ui_settings;
 mod ui_tabs;
 mod ui_welcome;
@@ -41,6 +42,7 @@ use crate::backend::formats::{
 use crate::backend::network::check_for_newer_version;
 use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
 use crate::backend::{network, system};
+use crate::ui_search::build_search_page;
 use crate::ui_settings::build_settings_page;
 use crate::ui_tabs::build_tabs_page;
 use crate::ui_welcome::build_welcome_page;
@@ -429,7 +431,7 @@ enum Screen {
 }
 
 #[derive(Debug, Default)]
-enum SearchState {
+pub enum SearchState {
         #[default]
         None,
         Searching,
@@ -446,126 +448,14 @@ impl ApplicationState {
                 // The main contents of the window
                 let contents: Column<'_, Message> = match self.screen {
                         Screen::Welcome => build_welcome_page(self),
-                        Screen::Tabs => {
-                                if !self.current_tab.lines.is_empty() {
-                                        build_tabs_page(self)
-                                } else {
-                                        Column::new()
-                                }.padding(self.main_padding)
-                        },
-                        Screen::Search => {
-                                match &self.search_state {
-                                        SearchState::Finished(s) => {
-                                                let mut title_column = column![];
-                                                let mut artist_column = column![];
-                                                let mut rating_column = column![];
-                                                let mut rating_count_column = column![];
-                                                let mut type_column = column![];
-
-                                                let mut sorted_results = s.clone();
-                                                let mut results: Vec<Vec<SearchResult>> = vec![vec![]];
-                                                let mut previous_artist: String = String::new();
-                                                let mut artist_vec: Vec<SearchResult> = vec![];
-                                                if self.search_filter.is_some() {
-                                                        let mut new_results = vec![];
-                                                        for result in sorted_results {
-                                                                if result.basic_data.data_type == self.search_filter.unwrap() {
-                                                                        new_results.push(result.clone());
-                                                                }
-                                                        }
-                                                        sorted_results = new_results;
-                                                }
-                                                if sorted_results.is_empty() {
-                                                        column![text("No search results!").color(color!(0xe64553))].padding(10)
-                                                } else {
-                                                        for result in sorted_results {
-                                                                if result.basic_data.artist == previous_artist {
-                                                                        previous_artist = result.basic_data.artist.clone();
-                                                                        artist_vec.push(result);
-                                                                } else {
-                                                                        results.push(artist_vec.clone());
-                                                                        artist_vec = vec![];
-                                                                        previous_artist = result.basic_data.artist.clone();
-                                                                        artist_vec.push(result);
-                                                                }
-                                                        }
-                                                        results.push(artist_vec.clone());
-                                                        let mut sorted_results: Vec<SearchResult> = vec![];
-                                                        for mut artist_vec in results {
-                                                                artist_vec.sort_by_key(|s| (s.rating_value * -100.0) as i32);
-                                                                sorted_results.append(&mut artist_vec);
-                                                        }
-                                                        for search_result in sorted_results {
-                                                                let title = search_result.basic_data.title.clone();
-                                                                let artist = search_result.basic_data.artist.clone();
-                                                                let url = search_result.basic_data.tab_link.clone();
-                                                                let rating_count = search_result.rating_count;
-                                                                let rating: String;
-                                                                let rating_count_string: String;
-                                                                if rating_count > 0 {
-                                                                        rating = format!("{:.1$}/5", search_result.rating_value, 1);
-                                                                        rating_count_string = format!("x{rating_count:?}");
-                                                                } else {
-                                                                        rating = "?".into();
-                                                                        rating_count_string = "".into();
-                                                                }
-                                                                let row_height = 40;
-                                                                if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) || !self.only_downloadable_results {
-                                                                        if SUPPORTED_DOWNLOAD_TYPES.contains(&search_result.basic_data.data_type) {
-                                                                                title_column = title_column.push(row![
-                                                                                        button("Download")
-                                                                                                .on_press(Message::DownloadTab(url)),
-                                                                                        Space::new(10, 0),
-                                                                                        text(title),
-                                                                                        Space::new(30, 0),
-                                                                                ].height(row_height).align_y(Center));
-                                                                        } else {
-                                                                                title_column = title_column.push(row![
-                                                                                        button("Download")
-                                                                                                .on_press(Message::Update)
-                                                                                                .style(button::secondary),
-                                                                                        Space::new(10, 0),
-                                                                                        text(title),
-                                                                                        Space::new(30, 0),
-                                                                                ].height(row_height).align_y(Center));
-                                                                        }
-                                                                        artist_column = artist_column.push(row![
-                                                                                text("by "),
-                                                                                text(artist).color(color!(0xea76cb)),
-                                                                                Space::new(30, 0),
-                                                                        ].height(row_height).align_y(Center));
-                                                                        rating_column = rating_column.push(row![
-                                                                                text("Rating: "),
-                                                                                text(rating).color(color!(0xdd7878)),
-                                                                                Space::new(10, 0),
-                                                                        ].height(row_height).align_y(Center));
-                                                                        rating_count_column = rating_count_column.push(row![
-                                                                                text(rating_count_string).color(color!(0xdd7878)),
-                                                                                Space::new(30, 0),
-                                                                        ].height(row_height).align_y(Center));
-                                                                        type_column = type_column.push(row![
-                                                                        text(format!("{}", &search_result.basic_data.data_type))
-                                                                        .color(color!(0x179299)),
-                                                                        Space::new(30, 0),
-                                                                        ].height(row_height).align_y(Center));
-                                                                }
-                                                        }
-                                                        column![container(
-                                                                scrollable(row![
-                                                                        title_column, artist_column, rating_column, rating_count_column, type_column,
-                                                                ])
-                                                                .spacing(10))
-                                                                .padding(10)]
-                                                        }
-                                                },
-                                        SearchState::Searching => column![text("Searching...")].padding(self.main_padding),
-                                        _ => Column::new()
-                                }.align_x(Center)
-                                .width(self.size.width - 2.0 * self.main_padding)
-                        },
-                        Screen::Settings => {
-                               build_settings_page(self) 
+                        Screen::Tabs => if !self.current_tab.lines.is_empty() {
+                                build_tabs_page(self)
+                        } else {
+                                Column::new()
                         }
+                        .padding(self.main_padding),
+                        Screen::Search => build_search_page(self),
+                        Screen::Settings => build_settings_page(self),
                 };
 
                 let bar_button = |label| button(row![label].align_y(Center)).padding([4, 12]);

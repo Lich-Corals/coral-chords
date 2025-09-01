@@ -19,7 +19,7 @@ use iced::widget::{column, rich_text, row, span, text, Column, Row};
 use iced::{font, Font};
 use ug_scraper::types::{DataSetType, DataType};
 
-pub fn build_tabs_page<'a>(application_state: &ApplicationState) -> Column<'a, Message> {
+pub fn build_tabs_page<'a>(application_state: &'a ApplicationState) -> Column<'a, Message> {
         let mut main_row: Row<'_, Message> = row![];
         let mut new_column = column![];
         if let Some(d) = &application_state.current_tab.metadata {
