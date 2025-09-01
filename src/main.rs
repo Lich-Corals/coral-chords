@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 mod backend;
+mod ui_bar;
 mod ui_search;
 mod ui_settings;
 mod ui_tabs;
@@ -22,7 +23,7 @@ mod ui_welcome;
 
 use confy::ConfyError;
 use iced::time::{self, Duration};
-use iced::widget::{button, column, combo_box, row, text, text_input, toggler, Column, Row, Space};
+use iced::widget::{button, column, combo_box, row, text, Column, Row, Space};
 use iced::Alignment::Center;
 use iced::{color, window};
 use iced::{event, Color, Event, Size, Subscription, Theme};
@@ -39,6 +40,7 @@ use crate::backend::formats::{
 use crate::backend::network::check_for_newer_version;
 use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
 use crate::backend::{network, system};
+use crate::ui_bar::build_controls;
 use crate::ui_search::build_search_page;
 use crate::ui_settings::build_settings_page;
 use crate::ui_tabs::build_tabs_page;
@@ -455,83 +457,8 @@ impl ApplicationState {
                         Screen::Settings => build_settings_page(self),
                 };
 
-                let bar_button = |label| button(row![label].align_y(Center)).padding([4, 12]);
                 // The header bar containing basic controls
-                let controls: Row<Message> = match self.screen {
-                        Screen::Welcome => row![
-                                bar_button("Tab")
-                                        .on_press(Message::TabsPage)
-                                        .style(button::secondary),
-                                bar_button("Search")
-                                        .on_press(Message::SearchPage)
-                                        .style(button::secondary),
-                                bar_button("Settings")
-                                        .on_press(Message::SettingsPage)
-                                        .style(button::secondary),
-                                Space::new(100, 0),
-                        ]
-                        .align_y(Center),
-                        Screen::Tabs => row![
-                                bar_button("Tab").on_press(Message::TabsPage),
-                                bar_button("Search")
-                                        .on_press(Message::SearchPage)
-                                        .style(button::secondary),
-                                bar_button("Settings")
-                                        .on_press(Message::SettingsPage)
-                                        .style(button::secondary),
-                                Space::new(100, 0),
-                                bar_button("Edit...").on_press(Message::OpenTabFile),
-                                Space::new(10, 0),
-                                bar_button("Reload").on_press(Message::Reload),
-                                Space::new(10, 0),
-                                toggler(self.playing)
-                                        .label("Play")
-                                        .on_toggle(Message::PlayingToggled)
-                        ]
-                        .align_y(Center),
-                        Screen::Search => {
-                                let value = &self.search_value;
-                                row![
-                                        bar_button("Tab")
-                                                .on_press(Message::TabsPage)
-                                                .style(button::secondary),
-                                        bar_button("Search").on_press(Message::SearchPage),
-                                        bar_button("Settings")
-                                                .on_press(Message::SettingsPage)
-                                                .style(button::secondary),
-                                        Space::new(100, 0),
-                                        text_input("Search a tab...", value)
-                                                .on_input(Message::UpdateSearchBar)
-                                                .width(300),
-                                        bar_button("Go!").on_press(Message::SearchTabs),
-                                        Space::new(10, 0),
-                                        bar_button("Clear").on_press(Message::ClearSearch),
-                                        Space::new(40, 0),
-                                        combo_box(
-                                                &self.tab_types,
-                                                "Filter",
-                                                self.search_filter.as_ref(),
-                                                Message::ApplySearch
-                                        )
-                                        .width(300),
-                                        bar_button("Reset").on_press(Message::ResetFilter),
-                                ]
-                                .align_y(Center)
-                        }
-                        Screen::Settings => row![
-                                bar_button("Tab")
-                                        .on_press(Message::TabsPage)
-                                        .style(button::secondary),
-                                bar_button("Search")
-                                        .on_press(Message::SearchPage)
-                                        .style(button::secondary),
-                                bar_button("Settings").on_press(Message::SettingsPage),
-                                Space::new(100, 0),
-                        ]
-                        .align_y(Center),
-                }
-                .padding(10)
-                .spacing(2);
+                let controls: Row<Message> = build_controls(self);
 
                 // A bar to show messages to the user
                 let mut notifications: Column<'_, Message> = column![];
