@@ -50,6 +50,14 @@ pub mod system {
                         .as_secs()
         }
 
+        /// Returns the current system time as UNIX time stamp-float or 1 if an error occurs
+        pub fn current_time_float() -> f64 {
+                SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_else(|_| Duration::from_millis(1))
+                        .as_secs_f64()
+        }
+
         /// Get the local song log
         pub fn get_song_log() -> (Vec<LoggedSong>, Option<ConfyError>) {
                 let result = confy::load::<Vec<LoggedSong>>("Coral-Chords", Some("song_log"));
