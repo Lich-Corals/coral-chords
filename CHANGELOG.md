@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.2]
+## [0.5.0]
 ### Added
 - Keyboard shortcuts to control the media player
 - Keyboard shortcuts to control the UI
