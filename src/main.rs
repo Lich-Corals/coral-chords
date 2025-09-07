@@ -678,7 +678,7 @@ impl ApplicationState {
                         Message::UpdateSearchBar(s) => self.search_value = s,
                         Message::SearchTabs => self.search_tabs(),
                         Message::ClearSearch => self.search_value = "".into(),
-                        Message::ClearNotifications => self.notifications = vec![],
+                        Message::ClearNotifications => self.clear_notifications(),
                         Message::CloseApp => exit(1),
                         Message::DownloadTab(url) => {
                                 self.get_tab(url, self.current_song_uid.to_owned())
@@ -801,9 +801,7 @@ impl ApplicationState {
                                 self.chord_colour = colour;
                                 self.chord_colour_text = c;
                         }
-                        Message::Reload => {
-                                self.song_id_display = String::new();
-                        }
+                        Message::Reload => self.reload_tab(),
                         Message::HeaderColourChange(c) => {
                                 let colour = Color::parse(&c)
                                         .unwrap_or(Color::parse("#dc8a78").unwrap());
@@ -811,16 +809,7 @@ impl ApplicationState {
                                 self.header_colour = colour;
                                 self.header_colour_text = c;
                         }
-                        Message::OpenTabFile => {
-                                if let Err(e) =
-                                        opener::open(std::path::Path::new(&self.current_path))
-                                {
-                                        self.show_info(NotificationType::Error(format!(
-                                                "Could not open file: {}",
-                                                e
-                                        )));
-                                }
-                        }
+                        Message::OpenTabFile => self.open_current_tab_file(),
                         Message::OpenLicence => {
                                 if let Err(e) = opener::open(std::path::Path::new(
                                         "https://www.gnu.org/licenses/agpl-3.0.en.html",
@@ -913,6 +902,9 @@ impl ApplicationState {
                                         Code::Digit2 => self.screen = Screen::Search,
                                         Code::Digit3 => self.screen = Screen::Settings,
                                         Code::F5 => self.screen = Screen::Welcome,
+                                        Code::F1 => self.open_current_tab_file(),
+                                        Code::F7 => self.clear_notifications(),
+                                        Code::F8 => self.reload_tab(),
                                         _ => (),
                                 },
                                 _ => (),
@@ -1009,6 +1001,23 @@ impl ApplicationState {
                                 }
                         }
                 });
+        }
+
+        fn reload_tab(&mut self) {
+                self.song_id_display = String::new();
+        }
+
+        fn open_current_tab_file(&mut self) {
+                if let Err(e) = opener::open(std::path::Path::new(&self.current_path)) {
+                        self.show_info(NotificationType::Error(format!(
+                                "Could not open file: {}",
+                                e
+                        )));
+                }
+        }
+
+        fn clear_notifications(&mut self) {
+                self.notifications = vec![];
         }
 
         /// Write a given Song's lines to UI
