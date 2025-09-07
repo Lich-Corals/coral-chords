@@ -889,10 +889,17 @@ impl ApplicationState {
                                                 } else {
                                                         self.last_space_key_press =
                                                                 current_time_float();
+                                                        if let Some(player) = &self.player
+                                                                && let Err(e) = player.play_pause()
+                                                        {
+                                                                self.show_info(NotificationType::Error(
+                                                                                        format!("Could not play/pause: {}", e)
+                                                                                ));
+                                                        }
                                                 }
                                         }
                                         Code::Enter => {
-                                                todo!("toggle play mode");
+                                                self.playing = !self.playing;
                                         }
                                         _ => (),
                                 },
