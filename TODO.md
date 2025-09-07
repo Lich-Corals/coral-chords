@@ -1,10 +1,12 @@
 ## To do
 
 - Self-updating
-- Add full UI control via keyboard
 - Replace some of the match parts with closures if possible
-- pause/play/rewind control from GUI using MPRIS
-    - Automatic pause/play with countdown (OPTIONAL)
+- Automatic pause/play with countdown when the song changes (OPTIONAL)
+- [PARTIAL] Add UI control via keyboard
+    - Edit, Reload tab
+    - [DONE] Switching screens
+- [DONE] pause/play/rewind control from GUI using MPRIS
 - [DONE] Automatically detect the start and end of multi line tab rows and don't split them
 - [DONE] Recolour optional metadata at the start of songs
 - [DONE] Played song log (OPTIONAL)

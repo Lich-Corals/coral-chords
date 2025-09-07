@@ -1,19 +1,24 @@
 # Changelog
 
 ## [0.4.2]
-## Code-changes
+### Added
+- Keyboard shortcuts to control the media player
+- Keyboard shortcuts to control the UI
+### Code-changes
 - Split off some UI-builders into separate files 
+### Updated dependencies
+- opener to 0.8.3
 
 ## [0.4.1]
-## Updated
+### Updated
 - ug-scraper dependency
-## Fixed
+### Fixed
 - Chord lines getting interpreted as section headers if square brackets were present in them
 
 ## [0.4.0]
-## Added
+### Added
 - A welcome screen for new users
-## Fixed
+### Fixed
 - Full tabs getting hidden if no chords are found
 - Tab rows getting split if the page length limit is reached
 
