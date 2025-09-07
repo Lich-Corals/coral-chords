@@ -901,6 +901,10 @@ impl ApplicationState {
                                         Code::Enter => {
                                                 self.playing = !self.playing;
                                         }
+                                        Code::Digit1 => self.screen = Screen::Tabs,
+                                        Code::Digit2 => self.screen = Screen::Search,
+                                        Code::Digit3 => self.screen = Screen::Settings,
+                                        Code::F5 => self.screen = Screen::Welcome,
                                         _ => (),
                                 },
                                 _ => (),
