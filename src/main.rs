@@ -883,6 +883,14 @@ impl ApplicationState {
                                                                                         format!("Could not set position: {}", e)
                                                                                 ));
                                                                 }
+                                                                if let Some(player) = &self.player
+                                                                        && let Err(e) =
+                                                                                player.pause()
+                                                                {
+                                                                        self.show_info(NotificationType::Error(
+                                                                                        format!("Could not pause: {}", e)
+                                                                                ));
+                                                                }
                                                         } else {
                                                                 self.show_info(NotificationType::Warning("Rewind only works while playing!".into()));
                                                         }
