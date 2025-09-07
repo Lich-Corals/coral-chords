@@ -22,12 +22,13 @@ mod ui_tabs;
 mod ui_welcome;
 
 use confy::ConfyError;
+use iced::keyboard::key::{Code, Physical};
 use iced::time::{self, Duration};
 use iced::widget::{button, column, combo_box, row, text, Column, Row, Space};
 use iced::Alignment::Center;
 use iced::{color, window};
 use iced::{event, Color, Event, Size, Subscription, Theme};
-use mpris::{Metadata, Player, PlayerFinder};
+use mpris::{Metadata, Player, PlayerFinder, TrackID};
 use std::process::exit;
 use std::sync::mpsc::{self};
 use std::thread::{self};
@@ -38,7 +39,9 @@ use crate::backend::formats::{
         CoralConfig, LoggedSong, NotificationType, ThreadData, Value, TAB_DIR,
 };
 use crate::backend::network::check_for_newer_version;
-use crate::backend::system::{add_to_song_log, current_time, get_config, load_song, store_song};
+use crate::backend::system::{
+        add_to_song_log, current_time, current_time_float, get_config, load_song, store_song,
+};
 use crate::backend::{network, system};
 use crate::ui_bar::build_controls;
 use crate::ui_search::build_search_page;
@@ -135,6 +138,10 @@ pub struct ApplicationState {
         renew_strings_interval: i64,
         /// The last time the user has changed their strings
         last_string_renewal: i64,
+        /// The last time the space key was pressed
+        last_space_key_press: f64,
+        /// The full current song ID
+        current_song_uid_full: TrackID,
 }
 
 impl Default for ApplicationState {
@@ -341,6 +348,11 @@ impl Default for ApplicationState {
                         metadata_colour_text: loaded_metadata_colour,
                         renew_strings_interval,
                         last_string_renewal,
+                        last_space_key_press: 0.0,
+                        current_song_uid_full: TrackID::new(
+                                "/org/mpris/MediaPlayer2/TrackList/NoTrack",
+                        )
+                        .unwrap(),
                 }
         }
 }
@@ -550,23 +562,27 @@ impl ApplicationState {
                                 }
                         };
                         if let Some(song_metadata) = song_metadata {
-                                let song_uid: String = match song_metadata.track_id() {
+                                let full_song_uid: TrackID;
+                                match song_metadata.track_id() {
                                         Some(id) => {
-                                                if id.to_string().contains("spotify") {
-                                                        id.to_string()
+                                                full_song_uid = id;
+                                                self.current_song_uid_full = full_song_uid.clone();
+                                                if full_song_uid.to_string().contains("spotify") {
+                                                        self.current_song_uid = full_song_uid
+                                                                .to_string()
                                                                 .replace("/com/spotify/track/", "")
                                                                 .replace("/", "")
-                                                                .replace(" ", "")
+                                                                .replace(" ", "");
                                                 } else {
                                                         self.show_info(NotificationType::Error("This song doesn't have a recognized song ID format.".into()));
-                                                        "unknown".into()
+                                                        self.current_song_uid = "unknown".into();
                                                 }
                                         }
                                         None => {
                                                 self.show_info(NotificationType::Error(
                                                         "Could not get song ID.".into(),
                                                 ));
-                                                "unknown".into()
+                                                self.current_song_uid = "unknown".into();
                                         }
                                 };
                                 let song_name: String = match &song_metadata.title() {
@@ -584,12 +600,12 @@ impl ApplicationState {
                                 };
                                 self.current_song_length = song_length;
                                 if self.playing {
-                                        if self.song_id_previoes_cycle != song_uid {
+                                        if self.song_id_previoes_cycle != self.current_song_uid {
                                                 self.start_time_stamp = current_time();
                                                 self.song_in_log = false;
                                                 self.screen = Screen::Tabs;
                                                 self.get_song_data_by_uid(
-                                                        &song_uid,
+                                                        &self.current_song_uid.clone(),
                                                         format!(
                                                                 "{} {}",
                                                                 self.clean_search_query(&song_name),
@@ -598,13 +614,13 @@ impl ApplicationState {
                                                         true,
                                                 );
                                         }
-                                        self.song_id_previoes_cycle = song_uid.clone();
+                                        self.song_id_previoes_cycle = self.current_song_uid.clone();
                                 }
-                                if self.song_id_display != song_uid {
+                                if self.song_id_display != self.current_song_uid {
                                         self.song_in_log = false;
                                         self.start_time_stamp = current_time();
                                         self.get_song_data_by_uid(
-                                                &song_uid,
+                                                &self.current_song_uid.clone(),
                                                 format!(
                                                         "{} {}",
                                                         self.clean_search_query(&song_name),
@@ -630,7 +646,6 @@ impl ApplicationState {
                                         });
                                         self.song_in_log = true;
                                 }
-                                self.current_song_uid = song_uid;
                         }
                 }
 
@@ -848,6 +863,39 @@ impl ApplicationState {
                                         self.size = s;
                                         self.bar_height = self.size.height / 20.0;
                                 }
+                                Event::Keyboard(iced::keyboard::Event::KeyPressed {
+                                        physical_key: Physical::Code(key),
+                                        ..
+                                }) => match key {
+                                        Code::Space => {
+                                                if current_time_float() - self.last_space_key_press
+                                                        <= 0.2
+                                                {
+                                                        if self.playing {
+                                                                if let Some(player) = &self.player
+                                                                && let Err(e) = player.set_position(
+                                                                        self.current_song_uid_full
+                                                                                .clone(),
+                                                                        &Duration::from_secs(0),
+                                                                )
+                                                                {
+                                                                        self.show_info(NotificationType::Error(
+                                                                                        format!("Could not set position: {}", e)
+                                                                                ));
+                                                                }
+                                                        } else {
+                                                                self.show_info(NotificationType::Warning("Rewind only works while playing!".into()));
+                                                        }
+                                                } else {
+                                                        self.last_space_key_press =
+                                                                current_time_float();
+                                                }
+                                        }
+                                        Code::Enter => {
+                                                todo!("toggle play mode");
+                                        }
+                                        _ => (),
+                                },
                                 _ => (),
                         },
                         _ => (),
