@@ -5,7 +5,7 @@ repository = "https://github.com/Lich-Corals/coral-chords/"
 readme = "README.md"
 keywords = ["GUI", "guitar", "music", "Spotify", "ultimate-guitar"]
 categories = ["multimedia"]
-version = "0.4.2-dev"
+version = "0.4.2"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 

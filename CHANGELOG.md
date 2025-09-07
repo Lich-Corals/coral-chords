@@ -4,6 +4,7 @@
 ### Added
 - Keyboard shortcuts to control the media player
 - Keyboard shortcuts to control the UI
+- Keyboard shortcuts to edit and reload the current tab
 ### Code-changes
 - Split off some UI-builders into separate files 
 ### Updated dependencies
