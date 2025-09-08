@@ -861,17 +861,25 @@ impl ApplicationState {
                                                         <= 0.2
                                                 {
                                                         if self.playing {
-                                                                if let Some(player) = &self.player
-                                                                && let Err(e) = player.set_position(
-                                                                        self.current_song_uid_full
-                                                                                .clone(),
-                                                                        &Duration::from_secs(0),
-                                                                )
-                                                                {
-                                                                        self.show_info(NotificationType::Error(
-                                                                                        format!("Could not set position: {}", e)
-                                                                                ));
-                                                                }
+                                                                let full_song_uid = self
+                                                                        .current_song_uid_full
+                                                                        .clone();
+                                                                self.player_action_or_error(|p| {
+                                                                        if let Err(e) = p.set_position(
+                                                                                full_song_uid
+                                                                                        .clone(),
+                                                                                &Duration::from_secs(0),
+                                                                        ) {
+                                                                                NotificationType::Error(
+                                                                                        format!(
+                                                                                "Could not play/pause: {}",
+                                                                                e
+                                                                        ),
+                                                                                )
+                                                                        } else {
+                                                                                NotificationType::default()
+                                                                        }
+                                                                });
                                                                 self.pause();
                                                         } else {
                                                                 self.show_info(NotificationType::Warning("Rewind only works while playing!".into()));
@@ -879,13 +887,18 @@ impl ApplicationState {
                                                 } else {
                                                         self.last_space_key_press =
                                                                 current_time_float();
-                                                        if let Some(player) = &self.player
-                                                                && let Err(e) = player.play_pause()
-                                                        {
-                                                                self.show_info(NotificationType::Error(
-                                                                                        format!("Could not play/pause: {}", e)
-                                                                                ));
-                                                        }
+                                                        self.player_action_or_error(|p| {
+                                                                if let Err(e) = p.play_pause() {
+                                                                        NotificationType::Error(
+                                                                                format!(
+                                                                        "Could not play/pause: {}",
+                                                                        e
+                                                                ),
+                                                                        )
+                                                                } else {
+                                                                        NotificationType::default()
+                                                                }
+                                                        });
                                                 }
                                         }
                                         Code::Enter => {
@@ -899,19 +912,28 @@ impl ApplicationState {
                                         Code::F8 => self.reload_tab(),
                                         Code::F9 => self.screen = Screen::Welcome,
                                         Code::ArrowLeft => {
-                                                if let Some(player) = &self.player
-                                                        && let Err(e) = player.previous()
-                                                {
-                                                        self.show_info(NotificationType::Error(format!("Could not rewind to previous song: {}", e)));
-                                                }
-                                                self.pause();
+                                                self.player_action_or_error(|p| {
+                                                        if let Err(e) = p.previous() {
+                                                                NotificationType::Error(format!(
+                                                                        "Could not rewind to previous song: {}",
+                                                                        e
+                                                                ))
+                                                        } else {
+                                                                NotificationType::default()
+                                                        }
+                                                });
                                         }
                                         Code::ArrowRight => {
-                                                if let Some(player) = &self.player
-                                                        && let Err(e) = player.next()
-                                                {
-                                                        self.show_info(NotificationType::Error(format!("Could not skip to next song: {}", e)));
-                                                }
+                                                self.player_action_or_error(|p| {
+                                                        if let Err(e) = p.next() {
+                                                                NotificationType::Error(format!(
+                                                                        "Could not skip to next song: {}",
+                                                                        e
+                                                                ))
+                                                        } else {
+                                                                NotificationType::default()
+                                                        }
+                                                });
                                                 self.pause();
                                         }
                                         _ => (),
@@ -946,12 +968,35 @@ impl ApplicationState {
                 self.notifications.push(content);
         }
 
-        fn pause(&mut self) {
-                if let Some(player) = &self.player
-                        && let Err(e) = player.pause()
-                {
-                        self.show_info(NotificationType::Error(format!("Could not pause: {}", e)));
+        /// Run a closure on the current player
+        ///
+        /// The `action` argument returns a message which will be displayed to the user if it isn't
+        /// `Default`.
+        fn player_action_or_error<F>(&mut self, action: F)
+        where
+                F: FnOnce(&mpris::Player) -> NotificationType,
+        {
+                if let Some(player) = &self.player {
+                        let notification = action(player);
+                        if notification != NotificationType::default() {
+                                self.show_info(notification);
+                        }
+                } else {
+                        self.show_info(NotificationType::Error(
+                                "Could not get player to run action on.".to_string(),
+                        ));
                 }
+        }
+
+        /// Pause the currently running song
+        fn pause(&mut self) {
+                self.player_action_or_error(|p| {
+                        if let Err(e) = p.pause() {
+                                NotificationType::Error(format!("Could not pause: {}", e))
+                        } else {
+                                NotificationType::default()
+                        }
+                });
         }
 
         /// Search for the selected query
