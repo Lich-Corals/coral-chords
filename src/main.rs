@@ -872,14 +872,7 @@ impl ApplicationState {
                                                                                         format!("Could not set position: {}", e)
                                                                                 ));
                                                                 }
-                                                                if let Some(player) = &self.player
-                                                                        && let Err(e) =
-                                                                                player.pause()
-                                                                {
-                                                                        self.show_info(NotificationType::Error(
-                                                                                        format!("Could not pause: {}", e)
-                                                                                ));
-                                                                }
+                                                                self.pause();
                                                         } else {
                                                                 self.show_info(NotificationType::Warning("Rewind only works while playing!".into()));
                                                         }
@@ -905,6 +898,22 @@ impl ApplicationState {
                                         Code::F7 => self.clear_notifications(),
                                         Code::F8 => self.reload_tab(),
                                         Code::F9 => self.screen = Screen::Welcome,
+                                        Code::ArrowLeft => {
+                                                if let Some(player) = &self.player
+                                                        && let Err(e) = player.previous()
+                                                {
+                                                        self.show_info(NotificationType::Error(format!("Could not rewind to previous song: {}", e)));
+                                                }
+                                                self.pause();
+                                        }
+                                        Code::ArrowRight => {
+                                                if let Some(player) = &self.player
+                                                        && let Err(e) = player.next()
+                                                {
+                                                        self.show_info(NotificationType::Error(format!("Could not skip to next song: {}", e)));
+                                                }
+                                                self.pause();
+                                        }
                                         _ => (),
                                 },
                                 _ => (),
@@ -935,6 +944,14 @@ impl ApplicationState {
         /// Might need to be changed to accept data from threads
         pub fn show_info(&mut self, content: NotificationType) {
                 self.notifications.push(content);
+        }
+
+        fn pause(&mut self) {
+                if let Some(player) = &self.player
+                        && let Err(e) = player.pause()
+                {
+                        self.show_info(NotificationType::Error(format!("Could not pause: {}", e)));
+                }
         }
 
         /// Search for the selected query
