@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.1]
+### Added
+- Keyboard shortcuts for next/previous songs
+
 ## [0.5.0]
 ### Added
 - Keyboard shortcuts to control the media player
