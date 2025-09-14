@@ -4,6 +4,8 @@
 ### Added
 - Option to create a blanc file if no search results could be found
 - Launch search when 'Enter' is pressed on search screen
+### Changed dependencies
+- Removed serde default features
 ### Updated dependencies
 - serde to 1.0.221
 
