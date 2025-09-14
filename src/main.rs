@@ -910,7 +910,11 @@ impl ApplicationState {
                                                 }
                                         }
                                         Code::Enter => {
-                                                self.playing = !self.playing;
+                                                if self.screen != Screen::Search {
+                                                        self.playing = !self.playing;
+                                                } else {
+                                                        self.search_tabs();
+                                                }
                                         }
                                         Code::Digit1 => self.screen = Screen::Tabs,
                                         Code::Digit2 => self.screen = Screen::Search,
