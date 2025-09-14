@@ -33,7 +33,10 @@ use std::process::exit;
 use std::sync::mpsc::{self};
 use std::thread::{self};
 use std::vec;
-use ug_scraper::types::{DataSetType, SearchResult, Song, SUPPORTED_DOWNLOAD_TYPES};
+use ug_scraper::types::{
+        BasicSongData, DataSetType, DataType, Line, SearchResult, Song, SongMetaData,
+        SUPPORTED_DOWNLOAD_TYPES,
+};
 
 use crate::backend::formats::{
         CoralConfig, LoggedSong, NotificationType, ThreadData, Value, TAB_DIR,
@@ -430,6 +433,8 @@ pub enum Message {
         AddToStringRenewalTime,
         /// Open the coffee page
         OpenCoffeePage,
+        /// Create an empty tab file
+        CreateEmptyTab,
 }
 
 #[derive(Default, PartialEq)]
@@ -810,6 +815,9 @@ impl ApplicationState {
                                 self.header_colour_text = c;
                         }
                         Message::OpenTabFile => self.open_current_tab_file(),
+                        Message::CreateEmptyTab => {
+                                self.create_empty_tab(&self.current_song_uid.clone())
+                        }
                         Message::OpenLicence => {
                                 if let Err(e) = opener::open(std::path::Path::new(
                                         "https://www.gnu.org/licenses/agpl-3.0.en.html",
@@ -1025,6 +1033,40 @@ impl ApplicationState {
                 }
                         },
                 );
+        }
+
+        /// Create an empty tab file
+        pub fn create_empty_tab(&mut self, song_uid: &str) {
+                let song = Song {
+                        lines: vec![
+                                Line {
+                                        text_data: "A section header".into(),
+                                        line_type: DataType::SectionTitle,
+                                },
+                                Line {
+                                        text_data: "C H O R D S".into(),
+                                        line_type: DataType::Chord,
+                                },
+                                Line {
+                                        text_data: "Some lyrics... Click the 'Edit...' button to edit the tab.".into(),
+                                        line_type: DataType::Lyric,
+                                },
+                                Line {
+                                        text_data: "View the GitHub Repository for an editing guide.".into(),
+                                        line_type: DataType::Lyric,
+                                },
+                        ],
+                        metadata: Some(SongMetaData::default()),
+                        basic_data: BasicSongData::default(),
+                };
+                if let Err(e) = store_song(song, song_uid) {
+                        self.show_info(NotificationType::Error(format!(
+                                "Could not create local file: {}",
+                                e
+                        )));
+                } else {
+                        self.screen = Screen::Tabs;
+                }
         }
 
         /// Download and store a tab locally

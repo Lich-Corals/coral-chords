@@ -46,8 +46,12 @@ pub fn build_search_page<'a>(application_state: &ApplicationState) -> Column<'a,
                                 sorted_results = new_results;
                         }
                         if sorted_results.is_empty() {
-                                column![text("No search results!").color(color!(0xe64553))]
-                                        .padding(10)
+                                column![
+                                        row![text("No search results!").color(color!(0xe64553))],
+                                        row![button("Create empty file")
+                                                .on_press(Message::CreateEmptyTab),]
+                                ]
+                                .padding(10)
                         } else {
                                 for result in sorted_results {
                                         if result.basic_data.artist == previous_artist {
