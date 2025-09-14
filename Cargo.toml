@@ -5,7 +5,7 @@ repository = "https://github.com/Lich-Corals/coral-chords/"
 readme = "README.md"
 keywords = ["GUI", "guitar", "music", "Spotify", "ultimate-guitar"]
 categories = ["multimedia"]
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 
@@ -22,7 +22,7 @@ features = ['yaml_conf']
 default-features = false
 
 [dependencies.serde]
-version = "1.0.219"
+version = "1.0.221"
 features = ["derive"]
 
 [dependencies.iced]
