@@ -90,6 +90,9 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                                 .style(button::secondary),
                         bar_button("Settings").on_press(Message::SettingsPage),
                         Space::new(100, 0),
+                        toggler(application_state.show_advanced_settings)
+                                .label("Advanced Settings")
+                                .on_toggle(Message::SetAdvancedSettings),
                 ]
                 .align_y(Center),
         }

@@ -145,6 +145,8 @@ pub struct ApplicationState {
         last_space_key_press: f64,
         /// The full current song ID
         current_song_uid_full: TrackID,
+        /// Whether to show advanced settings
+        show_advanced_settings: bool,
 }
 
 impl Default for ApplicationState {
@@ -356,6 +358,7 @@ impl Default for ApplicationState {
                                 "/org/mpris/MediaPlayer2/TrackList/NoTrack",
                         )
                         .unwrap(),
+                        show_advanced_settings: false,
                 }
         }
 }
@@ -435,6 +438,8 @@ pub enum Message {
         OpenCoffeePage,
         /// Create an empty tab file
         CreateEmptyTab,
+        /// Change the visibility of advanced settings
+        SetAdvancedSettings(bool),
 }
 
 #[derive(Default, PartialEq)]
@@ -806,6 +811,7 @@ impl ApplicationState {
                                 self.chord_colour = colour;
                                 self.chord_colour_text = c;
                         }
+                        Message::SetAdvancedSettings(s) => self.show_advanced_settings = s,
                         Message::Reload => self.reload_tab(),
                         Message::HeaderColourChange(c) => {
                                 let colour = Color::parse(&c)
