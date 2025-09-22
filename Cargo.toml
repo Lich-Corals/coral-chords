@@ -22,7 +22,7 @@ features = ['yaml_conf']
 default-features = false
 
 [dependencies.serde]
-version = "1.0.221"
+version = "1.0.226"
 features = ["derive"]
 default-features = false
 

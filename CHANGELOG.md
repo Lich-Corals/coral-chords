@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.3]
+### Added
+- A switch to toggle some advanced settings, making the settings page cleaner
+### Updated dependencies
+- serde to 1.0.226
+
 ## [0.5.2]
 ### Added
 - Option to create a blanc file if no search results could be found
