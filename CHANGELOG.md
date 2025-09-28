@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0]
+### Added
+- A page to show statistics of the last seven days
+- A shortcut to get to the statistics (Digit4)
+- A button next-too the settings button in the bar to get to the statistics (only visible on settings page)
+### Updated dependencies
+- serde to 1.0.228
+
 ## [0.5.3]
 ### Added
 - A switch to toggle some advanced settings, making the settings page cleaner
