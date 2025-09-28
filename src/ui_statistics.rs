@@ -14,13 +14,9 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::backend::system::get_song_log;
+use crate::backend::system::{current_time, get_song_log};
 use crate::{ApplicationState, Message};
-use iced::widget::{
-        checkbox, column, combo_box, progress_bar, rich_text, row, scrollable, slider, span, text,
-        text_input, Column, Space,
-};
-use iced::Alignment::Center;
+use iced::widget::{column, scrollable, text, Column};
 
 struct SongStat {
         name: String,
@@ -36,8 +32,37 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                 let song_log = get_song_log();
                 if song_log.1.is_none() {
                         let song_log = song_log.0;
-                        for song in song_log {}
-                        col = column![scrollable(column!(progress_bar(0.0..=100.0, 50.0)))];
+                        let mut temp_col: Column<'a, Message> = Column::new();
+                        let statistics_range_s: u64 = 7 * 24 * 60 * 60;
+                        let day_s: u64 = 24 * 60 * 60;
+                        let mut included_stats: Vec<SongStat> = Vec::new();
+                        let mut durations_per_day: Vec<u64> = Vec::new();
+                        for i in 0..(statistics_range_s / day_s) {
+                                durations_per_day.insert(i as usize, 0);
+                        }
+                        let current_time = (current_time() / day_s) * day_s + day_s;
+                        for song in song_log {
+                                if song.timestamp > current_time - statistics_range_s {
+                                        let day_number: u64 =
+                                                (current_time - song.timestamp) / day_s;
+                                        durations_per_day[day_number as usize] += song.length_s;
+                                        for i in 0..included_stats.len() {
+                                                let stat = &mut included_stats[i];
+                                                if stat.name == song.name
+                                                        && stat.artist == song.artist
+                                                {
+                                                        stat.count += 1;
+                                                } else {
+                                                        included_stats.push(SongStat {
+                                                                name: song.name.clone(),
+                                                                artist: song.artist.clone(),
+                                                                count: 1,
+                                                        });
+                                                }
+                                        }
+                                }
+                        }
+                        col = column![scrollable(column!())];
                 } else {
                         col = column![text(format!(
                                 "Could not load statistics: {}",
