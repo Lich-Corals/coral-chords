@@ -16,8 +16,8 @@
 
 use crate::{ApplicationState, Message};
 use iced::widget::{
-        checkbox, column, combo_box, rich_text, row, scrollable, slider, span, text, text_input,
-        Column, Space,
+        button, checkbox, column, combo_box, rich_text, row, scrollable, slider, span, text,
+        text_input, Column, Space,
 };
 use iced::Alignment::Center;
 use iced::{color, font, Font};
@@ -130,11 +130,17 @@ pub fn build_settings_page<'a>(application_state: &'a ApplicationState) -> Colum
                         Space::new(0, 20),
                         column![
                                 text("Advanced").size(25),
-                                row![checkbox(
-                                        "Log played songs locally",
-                                        application_state.log_played_songs
-                                )
-                                .on_toggle(Message::TogglePlayedLog),]
+                                row![
+                                        checkbox(
+                                                "Log played songs locally",
+                                                application_state.log_played_songs
+                                        )
+                                        .on_toggle(Message::TogglePlayedLog),
+                                        Space::new(10, 0),
+                                        button("Show statistics")
+                                                .on_press(Message::StatisticsPage)
+                                                .padding([4, 10])
+                                ]
                                 .align_y(Center),
                                 row![checkbox(
                                         "Remind me to replace my strings",

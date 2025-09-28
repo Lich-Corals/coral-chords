@@ -21,6 +21,18 @@ use iced::Alignment::Center;
 pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Message> {
         let bar_button = |label| button(row![label].align_y(Center)).padding([4, 12]);
         match application_state.screen {
+                Screen::Statistics => row![
+                        bar_button("Tab")
+                                .on_press(Message::TabsPage)
+                                .style(button::secondary),
+                        bar_button("Search")
+                                .on_press(Message::SearchPage)
+                                .style(button::secondary),
+                        bar_button("Settings")
+                                .on_press(Message::SettingsPage)
+                                .style(button::secondary),
+                        Space::new(100, 0),
+                ],
                 Screen::Welcome => row![
                         bar_button("Tab")
                                 .on_press(Message::TabsPage)

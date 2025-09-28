@@ -18,6 +18,7 @@ mod backend;
 mod ui_bar;
 mod ui_search;
 mod ui_settings;
+mod ui_statistics;
 mod ui_tabs;
 mod ui_welcome;
 
@@ -49,6 +50,7 @@ use crate::backend::{network, system};
 use crate::ui_bar::build_controls;
 use crate::ui_search::build_search_page;
 use crate::ui_settings::build_settings_page;
+use crate::ui_statistics::build_statistics_page;
 use crate::ui_tabs::build_tabs_page;
 use crate::ui_welcome::build_welcome_page;
 
@@ -372,6 +374,8 @@ pub enum Message {
         SearchPage,
         /// Changed to settings page
         SettingsPage,
+        /// Changed to statistics page
+        StatisticsPage,
         /// Toggled playing toggle
         PlayingToggled(bool),
         /// Update the value of the search bar
@@ -449,6 +453,7 @@ enum Screen {
         Search,
         Settings,
         Welcome,
+        Statistics,
 }
 
 #[derive(Debug, Default)]
@@ -477,6 +482,7 @@ impl ApplicationState {
                         .padding(self.main_padding),
                         Screen::Search => build_search_page(self),
                         Screen::Settings => build_settings_page(self),
+                        Screen::Statistics => build_statistics_page(self),
                 };
 
                 // The header bar containing basic controls
@@ -680,6 +686,7 @@ impl ApplicationState {
                         Message::TabsPage => self.screen = Screen::Tabs,
                         Message::SearchPage => self.screen = Screen::Search,
                         Message::SettingsPage => self.screen = Screen::Settings,
+                        Message::StatisticsPage => self.screen = Screen::Statistics,
 
                         Message::PlayingToggled(s) => {
                                 self.playing = s;
