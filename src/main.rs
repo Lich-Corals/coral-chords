@@ -932,6 +932,7 @@ impl ApplicationState {
                                         Code::Digit1 => self.screen = Screen::Tabs,
                                         Code::Digit2 => self.screen = Screen::Search,
                                         Code::Digit3 => self.screen = Screen::Settings,
+                                        Code::Digit4 => self.screen = Screen::Statistics,
                                         Code::F1 => self.open_current_tab_file(),
                                         Code::F7 => self.clear_notifications(),
                                         Code::F8 => self.reload_tab(),
