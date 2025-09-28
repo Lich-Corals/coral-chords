@@ -16,8 +16,9 @@ An application to download and sync tabs from Ultimate Guitar with the music pla
 - Downloading tabs
 - Syncing tabs with Spotify
 - Control the media player and UI using keyboard shortcuts
-- Remind you to renew your instrument's strings
 - Log the songs you've played locally
+- Show statistics about what you've played
+- Remind you to renew your instrument's strings
 
 ## Installation
 
