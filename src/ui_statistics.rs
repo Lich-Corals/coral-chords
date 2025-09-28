@@ -20,7 +20,7 @@ use iced::widget::{column, progress_bar, row, scrollable, text, Column, Space};
 use iced::Alignment::Center;
 
 /// Stores basic data about a single song while evaluation of the song log.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct SongStat {
         name: String,
         artist: String,
@@ -38,7 +38,7 @@ impl Default for SongStat {
 }
 
 /// Stores basic data about a single artist while evaluation of the song log.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ArtistStat {
         name: String,
         count: u16,
@@ -141,6 +141,12 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                                         favourite_artist = stat;
                                 }
                         }
+                        let mut sorted_artists = artist_stats.clone();
+                        sorted_artists.sort_by_key(|a| -(a.count as i16));
+                        sorted_artists.pop_if(|a| a.count == 0);
+                        let mut sorted_songs = included_stats.clone();
+                        sorted_songs.sort_by_key(|s| -(s.count as i16));
+                        sorted_songs.pop_if(|s| s.count == 0);
 
                         temp_col = temp_col.push(Space::new(0, 15));
                         temp_col = temp_col.push(text(format!(
@@ -176,6 +182,30 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                                 "you have played this artist {} time(s)",
                                 favourite_artist.count
                         )));
+                        temp_col = temp_col.push(Space::new(0, 30));
+                        temp_col = temp_col.push(text("Played songs by count").size(18));
+                        temp_col = temp_col.push(Space::new(0, 5));
+                        for (i, song) in sorted_songs.iter().enumerate() {
+                                temp_col = temp_col.push(row![text(format!(
+                                        "{:03}.: {} by {}; {} time(s)",
+                                        i + 1,
+                                        song.name,
+                                        song.artist,
+                                        song.count
+                                ))])
+                        }
+                        temp_col = temp_col.push(Space::new(0, 15));
+                        temp_col = temp_col.push(text("Played artists by count").size(18));
+                        temp_col = temp_col.push(Space::new(0, 5));
+                        for (i, artist) in sorted_artists.iter().enumerate() {
+                                temp_col = temp_col.push(row![text(format!(
+                                        "{:03}.: {}; {} time(s)",
+                                        i + 1,
+                                        artist.name,
+                                        artist.count
+                                ))])
+                        }
+
                         col = column![scrollable(temp_col)];
                 } else {
                         col = column![text(format!(
