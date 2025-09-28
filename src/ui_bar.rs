@@ -31,6 +31,7 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                         bar_button("Settings")
                                 .on_press(Message::SettingsPage)
                                 .style(button::secondary),
+                        bar_button("Statistics").on_press(Message::StatisticsPage),
                         Space::new(100, 0),
                 ],
                 Screen::Welcome => row![
@@ -101,6 +102,9 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                                 .on_press(Message::SearchPage)
                                 .style(button::secondary),
                         bar_button("Settings").on_press(Message::SettingsPage),
+                        bar_button("Statistics")
+                                .on_press(Message::StatisticsPage)
+                                .style(button::secondary),
                         Space::new(100, 0),
                         toggler(application_state.show_advanced_settings)
                                 .label("Advanced Settings")
