@@ -67,6 +67,7 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                         let mut included_stats: Vec<SongStat> = vec![SongStat::default()];
                         let mut artist_stats: Vec<ArtistStat> = vec![ArtistStat::default()];
                         let mut durations_per_day: Vec<u64> = Vec::new();
+                        let mut total_playtime_s: u64 = 0;
                         for i in 0..(statistics_range_s / day_s) {
                                 durations_per_day.insert(i as usize, 0);
                         }
@@ -80,6 +81,7 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                                         let day_number: u64 =
                                                 (current_time - song.timestamp) / day_s;
                                         durations_per_day[day_number as usize] += song.length_s;
+                                        total_playtime_s += song.length_s;
                                         let mut song_in_stats: bool = false;
                                         for stat in included_stats.iter_mut() {
                                                 if stat.name == song.name
@@ -148,6 +150,12 @@ pub fn build_statistics_page<'a>(application_state: &'a ApplicationState) -> Col
                         sorted_songs.sort_by_key(|s| -(s.count as i16));
                         sorted_songs.pop_if(|s| s.count == 0);
 
+                        temp_col = temp_col.push(Space::new(0, 15));
+                        temp_col = temp_col.push(text(format!(
+                                "Total playtime: {}min.",
+                                total_playtime_s / 60
+                        ))
+                        .size(18));
                         temp_col = temp_col.push(Space::new(0, 15));
                         temp_col = temp_col.push(text(format!(
                                 "Different songs played: {}",
