@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1]
+### Added
+- Total playtime to statistics
+### Fixed
+- `Esus*` and `Asus*` being replaced with `Ebus*` and `Abus*` if German chord name replacement was enabled
+
 ## [0.6.0]
 ### Added
 - A page to show statistics of the last seven days
