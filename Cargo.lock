@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Coral-Chords"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "confy",
  "e_crate_version_checker",
@@ -4705,9 +4705,9 @@ dependencies = [
 
 [[package]]
 name = "ug-scraper"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7d1063bd07e6f124cf4f7803e20a1134db8f77b2e58c5c6007f16f3a411a3b5"
+checksum = "7082e3f925ae3ce87861abd73d59186af77624c94c85b7394997f71c370dc271"
 dependencies = [
  "html-escape",
  "percent-encoding",

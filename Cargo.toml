@@ -5,7 +5,7 @@ repository = "https://github.com/Lich-Corals/coral-chords/"
 readme = "README.md"
 keywords = ["GUI", "guitar", "music", "Spotify", "ultimate-guitar"]
 categories = ["multimedia"]
-version = "0.6.1"
+version = "0.6.2"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 
@@ -14,7 +14,7 @@ exclude = [".gitignore", ".github/*", "latex/*", "coral-chords.desktop", "rustfm
 [dependencies]
 mpris = "2.0.1"
 opener = "0.8.3"
-ug-scraper = "0.2.5"
+ug-scraper = "0.2.6"
 
 [dependencies.confy]
 version = "1.0.0"
