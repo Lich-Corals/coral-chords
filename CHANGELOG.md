@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.2]
+### Updated dependencies
+- ug_scraper to 0.2.6
+
 ## [0.6.1]
 ### Added
 - Total playtime to statistics
