@@ -1,6 +1,7 @@
 # Coral-Chords
 [![GitHub](https://img.shields.io/badge/-GitHub-181717?style=for-the-badge&logo=GitHub&logoColor=white)](https://github.com/Lich-Corals/coral-chords)
 [![Crates](https://img.shields.io/badge/-Crates.io-ffc933?style=for-the-badge&logo=rust&logoColor=black)](https://crates.io/crates/Coral-Chords)
+[![Sourceforge](https://img.shields.io/badge/-Sourceforge-FF6600?style=for-the-badge&logo=sourceforge&logoColor=white)](https://sourceforge.net/projects/coral-chords/)
 [![Coffee Logo](https://img.shields.io/badge/-Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.coff.ee/lichcorals)
 
 An application to download and sync tabs from Ultimate Guitar with the music playing on Spotify.
