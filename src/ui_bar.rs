@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public Licence
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ApplicationState, Message, Screen};
+use crate::{ApplicationState, Message, Screen, SearchState};
 use iced::widget::{button, combo_box, row, text_input, toggler, Row, Space};
 use iced::Alignment::Center;
 
@@ -67,10 +67,13 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                 .align_y(Center),
                 Screen::Search => {
                         let value = &application_state.search_value;
-                        let search_bar = text_input("Search a tab...", value)
+                        let mut search_bar = text_input("Search a tab...", value)
                                 .on_input(Message::UpdateSearchBar)
                                 .on_submit(Message::SearchTabs)
                                 .width(300);
+                        if application_state.search_state == SearchState::Searching {
+                                search_bar = text_input("Searching...", value).width(300);
+                        }
                         row![
                                 bar_button("Tab")
                                         .on_press(Message::TabsPage)
