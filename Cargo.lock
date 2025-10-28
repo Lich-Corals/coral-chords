@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "Coral-Chords"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "confy",
  "e_crate_version_checker",
@@ -1121,9 +1121,9 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "e_crate_version_checker"
-version = "0.1.33"
+version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc9a26200bb9cb1b9b531b3a61b3559c6849661af5470068c2de63c590f16938"
+checksum = "1c3899c90df70be35176abd0b25ab52e4e82bb6d10d52c2e063969bcb82f8924"
 dependencies = [
  "genai",
  "reqwest",
@@ -1509,9 +1509,9 @@ dependencies = [
 
 [[package]]
 name = "genai"
-version = "0.3.5"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8957a26f596fad1248e60f6cd4c08eecaf1933168ce92f70a97c0d0773334620"
+checksum = "48317c8c4a7011ffb748502f9c45408a351103ad225f26825d84f2ff0ac49b25"
 dependencies = [
  "bytes",
  "derive_more 2.0.1",
@@ -4705,9 +4705,9 @@ dependencies = [
 
 [[package]]
 name = "ug-scraper"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7d1063bd07e6f124cf4f7803e20a1134db8f77b2e58c5c6007f16f3a411a3b5"
+checksum = "7082e3f925ae3ce87861abd73d59186af77624c94c85b7394997f71c370dc271"
 dependencies = [
  "html-escape",
  "percent-encoding",

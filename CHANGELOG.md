@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.6.2]
+### Added
+- Search-bar lock while searching
+### Fixed
+- Running search blocking hot-keys
+### Updated dependencies
+- ug_scraper to 0.2.6
+- e_crate_version_checker to 0.1.35
+
 ## [0.6.1]
 ### Added
 - Total playtime to statistics
