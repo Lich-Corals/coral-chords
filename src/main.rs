@@ -456,7 +456,7 @@ enum Screen {
         Statistics,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub enum SearchState {
         #[default]
         None,
@@ -542,9 +542,7 @@ impl ApplicationState {
         }
 
         fn subscription(&self) -> Subscription<Message> {
-                if let SearchState::Searching = self.search_state {
-                        time::every(Duration::from_millis(200)).map(|_| Message::Update)
-                } else if self.playing {
+                if SearchState::Searching == self.search_state || self.playing {
                         Subscription::batch(vec![
                                 time::every(Duration::from_millis(200)).map(|_| Message::Update),
                                 event::listen().map(Message::EventOccurred),
@@ -669,8 +667,12 @@ impl ApplicationState {
                 if let Ok(v) = self.channel.1.try_recv() {
                         match v {
                                 ThreadData::Notification(n) => self.notifications.push(n),
-                                ThreadData::SearchResults(s) => {
-                                        self.search_state = SearchState::Finished(s)
+                                ThreadData::SearchResults(q, s) => {
+                                        if self.search_value == q {
+                                                self.search_state = SearchState::Finished(s)
+                                        } else {
+                                                self.search_state = SearchState::None
+                                        }
                                 }
                                 ThreadData::DownloadFinishedSignal => {
                                         if self.playing {
@@ -1038,7 +1040,7 @@ impl ApplicationState {
                         move || {
                                 match network::search(search_query.as_str(), search_depth) {
                         Ok(s) => {
-                                if let Err(e) = tx.send(ThreadData::SearchResults(s))
+                                if let Err(e) = tx.send(ThreadData::SearchResults(search_query, s))
                                         && let Err(e) = tx.send(ThreadData::Notification(
                                                 NotificationType::Error("Could not send search results to main thread: ".to_string() + &e.to_string()))) {
                                         println!("Could not send message: {}", e);

@@ -160,7 +160,8 @@ pub mod formats {
                 #[default]
                 None,
                 Notification(NotificationType),
-                SearchResults(Vec<SearchResult>),
+                /// The String is the query
+                SearchResults(String, Vec<SearchResult>),
                 DownloadFinishedSignal,
         }
 
