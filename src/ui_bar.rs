@@ -67,6 +67,10 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                 .align_y(Center),
                 Screen::Search => {
                         let value = &application_state.search_value;
+                        let search_bar = text_input("Search a tab...", value)
+                                .on_input(Message::UpdateSearchBar)
+                                .on_submit(Message::SearchTabs)
+                                .width(300);
                         row![
                                 bar_button("Tab")
                                         .on_press(Message::TabsPage)
@@ -76,9 +80,7 @@ pub fn build_controls<'a>(application_state: &'a ApplicationState) -> Row<'a, Me
                                         .on_press(Message::SettingsPage)
                                         .style(button::secondary),
                                 Space::new(100, 0),
-                                text_input("Search a tab...", value)
-                                        .on_input(Message::UpdateSearchBar)
-                                        .width(300),
+                                search_bar,
                                 bar_button("Go!").on_press(Message::SearchTabs),
                                 Space::new(10, 0),
                                 bar_button("Clear").on_press(Message::ClearSearch),
