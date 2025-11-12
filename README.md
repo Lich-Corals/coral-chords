@@ -6,6 +6,14 @@
 
 An application to download and sync tabs from Ultimate Guitar with the music playing on Spotify.
 
+
+> [!IMPORTANT]  
+> For and Microsoft- and _other_-Reasons, this project has been migrated to Codeberg.
+>
+> If you still want to support this project, consider starring it on Codeberg.
+> 
+> [![Codeberg](https://img.shields.io/badge/-view_on_codeberg-2185D0?style=for-the-badge&logo=Codeberg&logoColor=white)](https://codeberg.org/Lich-Corals/coral-chords)
+
 <p align="center">
   <img alt="cch_themes_transp" src="https://github.com/user-attachments/assets/5ee115fb-6d6b-41b2-a81b-200df17d54b2" />
   <br/>
